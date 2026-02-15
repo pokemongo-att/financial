@@ -1,0 +1,58 @@
+"use server";
+
+import { db } from "@/db";
+import { familyMembers, familyTransactions } from "@/db/schema";
+import { eq } from "drizzle-orm";
+
+export async function getFamilyMembers(userId: string) {
+  const members = await db
+    .select()
+    .from(familyMembers)
+    .where(eq(familyMembers.userId, userId));
+
+  const results = await Promise.all(
+    members.map(async (member) => {
+      const txs = await db
+        .select()
+        .from(familyTransactions)
+        .where(eq(familyTransactions.familyMemberId, member.id))
+        .orderBy(familyTransactions.date);
+
+      const totalCents = txs.reduce((sum, tx) => sum + tx.amountCents, 0);
+      return { ...member, transactions: txs, totalCents };
+    })
+  );
+
+  return results;
+}
+
+export async function createFamilyMember(
+  userId: string,
+  data: { name: string; type: "PARENT" | "CHILD" }
+) {
+  const [created] = await db
+    .insert(familyMembers)
+    .values({ ...data, userId })
+    .returning();
+  return created;
+}
+
+export async function createFamilyTransaction(
+  data: {
+    familyMemberId: string;
+    amountCents: number;
+    date: string;
+    note?: string;
+    monthlyPlanId?: string;
+  }
+) {
+  const [created] = await db
+    .insert(familyTransactions)
+    .values(data)
+    .returning();
+  return created;
+}
+
+export async function deleteFamilyTransaction(txId: string) {
+  await db.delete(familyTransactions).where(eq(familyTransactions.id, txId));
+}

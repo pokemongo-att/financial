@@ -81,7 +81,9 @@ export const templateItems = pgTable("template_items", {
     .references(() => templates.id, { onDelete: "cascade" }),
   category: categoryEnum("category").notNull(),
   name: varchar("name", { length: 255 }).notNull(),
+  slug: varchar("slug", { length: 100 }),
   defaultAmountCents: integer("default_amount_cents").default(0).notNull(),
+  interestRate: varchar("interest_rate", { length: 10 }), // For home loans
   accountOrSubType: varchar("account_or_sub_type", { length: 255 }),
   isActive: boolean("is_active").default(true).notNull(),
   sortOrder: integer("sort_order").default(0).notNull(),
@@ -109,8 +111,10 @@ export const monthlyItems = pgTable(
     planId: uuid("plan_id")
       .notNull()
       .references(() => monthlyPlans.id, { onDelete: "cascade" }),
+    slug: varchar("slug", { length: 100 }),
     category: categoryEnum("category").notNull(),
     name: varchar("name", { length: 255 }).notNull(),
+    interestRate: varchar("interest_rate", { length: 10 }), // For home loans
     plannedAmountCents: integer("planned_amount_cents").default(0).notNull(),
     actualAmountCents: integer("actual_amount_cents"),
     status: itemStatusEnum("status").default("PLANNED").notNull(),
@@ -216,3 +220,32 @@ export const assetTransactions = pgTable(
     index("idx_asset_tx_account_date").on(table.assetAccountId, table.date),
   ]
 );
+
+// ── Home Loans ─────────────────────────────────────────────────────────
+export const homeLoans = pgTable("home_loans", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id),
+  name: varchar("name", { length: 255 }).notNull(),
+  slug: varchar("slug", { length: 100 }).notNull(), // e.g. loan144-49
+  principalBalanceCents: integer("principal_balance_cents").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// ── Insurances ─────────────────────────────────────────────────────────
+export const insurances = pgTable("insurances", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id),
+  name: varchar("name", { length: 255 }).notNull(),
+  coverageAmountCents: integer("coverage_amount_cents").notNull(),
+  startDate: date("start_date").notNull(),
+  maturityDate: date("maturity_date").notNull(),
+  premiumAmountCents: integer("premium_amount_cents").notNull(),
+  premiumUntilYear: integer("premium_until_year"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});

@@ -11,5 +11,6 @@ export const updateMonthlyItemSchema = z.object({
   actualAmountCents: z.number().int().min(0).nullable().optional(),
   status: z.enum(["PLANNED", "DONE", "SKIPPED"]).optional(),
   note: z.string().optional(),
+  interestRate: z.string().nullable().optional(),
   paymentMethod: z.string().optional(),
 });

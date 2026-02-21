@@ -7,12 +7,16 @@ import { useRouter } from "next/navigation";
 import { DataTable } from "@/components/DataTable";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown-menu";
-import { Pencil, Trash2, FileText } from "lucide-react";
+import { DropdownMenu, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuContent } from "@/components/ui/dropdown-menu";
+import { Pencil, Trash2, FileText, MoreHorizontal } from "lucide-react";
 import { type ColumnDef } from "@tanstack/react-table";
 import { updateMonthlyItem, deleteMonthlyItem } from "@/actions/monthly";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 type Item = {
   id: string;
@@ -22,6 +26,7 @@ type Item = {
   actualAmountCents: number | null;
   status: "PLANNED" | "DONE" | "SKIPPED";
   note: string | null;
+  interestRate: string | null;
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -44,7 +49,9 @@ export function MonthlyItemsTable({ items }: { items: Item[] }) {
   const router = useRouter();
   const [filter, setFilter] = useState<string>("ALL");
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [editItem, setEditItem] = useState<Item | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const categories = ["ALL", "INCOME", "EXPENSE", "SAVING", "GOAL", "FAMILY"];
 
@@ -69,7 +76,12 @@ export function MonthlyItemsTable({ items }: { items: Item[] }) {
         accessorKey: "name",
         header: "รายการ",
         cell: ({ row }) => (
-          <span className="font-medium text-slate-900">{row.original.name}</span>
+          <div className="flex flex-col">
+            <span className="font-medium text-slate-900">{row.original.name}</span>
+            {row.original.interestRate && (
+              <span className="text-xs text-slate-500">ดอกเบี้ย: {row.original.interestRate}%</span>
+            )}
+          </div>
         ),
       },
       {
@@ -124,9 +136,22 @@ export function MonthlyItemsTable({ items }: { items: Item[] }) {
         meta: { align: "center" },
         cell: ({ row }) => (
           <DropdownMenu>
-            <DropdownMenuItem onClick={() => setDeleteId(row.original.id)}>
-              <Trash2 className="w-3.5 h-3.5" /> ลบรายการ
-            </DropdownMenuItem>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Open menu</span>
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setEditItem(row.original)}>
+                <Pencil className="mr-2 h-4 w-4" />
+                แก้ไขยอด/หมายเหตุ
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setDeleteId(row.original.id)} className="text-red-600">
+                <Trash2 className="mr-2 h-4 w-4" />
+                ลบรายการ
+              </DropdownMenuItem>
+            </DropdownMenuContent>
           </DropdownMenu>
         ),
       },
@@ -149,6 +174,32 @@ export function MonthlyItemsTable({ items }: { items: Item[] }) {
     }
   }
 
+  async function handleSaveEdit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!editItem) return;
+    
+    const formData = new FormData(e.currentTarget);
+    const actualAmount = formData.get("actualAmount") as string;
+    const note = formData.get("note") as string;
+    const interestRate = formData.get("interestRate") as string;
+
+    setSaving(true);
+    try {
+      await updateMonthlyItem(editItem.id, {
+        actualAmountCents: actualAmount ? Math.round(parseFloat(actualAmount) * 100) : null,
+        note: note || null,
+        interestRate: interestRate || null,
+      });
+      toast.success("บันทึกการแก้ไขแล้ว");
+      setEditItem(null);
+      router.refresh();
+    } catch (err) {
+      toast.error("เกิดข้อผิดพลาดในการบันทึก");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <>
       <DataTable
@@ -157,7 +208,7 @@ export function MonthlyItemsTable({ items }: { items: Item[] }) {
         searchPlaceholder="ค้นหารายการ..."
         emptyTitle="ไม่มีรายการ"
         toolbar={
-          <>
+          <div className="flex gap-2">
             {categories.map((cat) => (
               <Button
                 key={cat}
@@ -168,9 +219,68 @@ export function MonthlyItemsTable({ items }: { items: Item[] }) {
                 {cat === "ALL" ? "ทั้งหมด" : CATEGORY_LABELS[cat]}
               </Button>
             ))}
-          </>
+          </div>
         }
       />
+
+      <Dialog open={!!editItem} onOpenChange={() => setEditItem(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>แก้ไขรายการ: {editItem?.name}</DialogTitle>
+          </DialogHeader>
+          {editItem && (
+            <form onSubmit={handleSaveEdit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="actualAmount">ยอดจ่ายจริง (บาท)</Label>
+                <Input
+                  id="actualAmount"
+                  name="actualAmount"
+                  type="number"
+                  step="0.01"
+                  defaultValue={editItem.actualAmountCents != null ? (editItem.actualAmountCents / 100).toFixed(2) : (editItem.plannedAmountCents / 100).toFixed(2)}
+                />
+                <p className="text-xs text-slate-500">ยอดที่วางแผนไว้: {(editItem.plannedAmountCents / 100).toLocaleString()} บาท</p>
+              </div>
+              
+              {editItem.interestRate !== undefined && (
+                <div className="space-y-2">
+                  <Label htmlFor="interestRate">ดอกเบี้ย (%)</Label>
+                  <Input
+                    id="interestRate"
+                    name="interestRate"
+                    type="number"
+                    step="0.01"
+                    defaultValue={editItem.interestRate || ""}
+                    placeholder="เช่น 3.50"
+                  />
+                  <p className="text-xs text-slate-500">ใส่ดอกเบี้ยเฉพาะกรณีที่เป็นค่าสินเชื่อบ้าน</p>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label htmlFor="note">หมายเหตุ</Label>
+                <Textarea
+                  id="note"
+                  name="note"
+                  defaultValue={editItem.note || ""}
+                  placeholder="เพิ่มหมายเหตุ..."
+                  rows={3}
+                />
+              </div>
+
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setEditItem(null)}>
+                  ยกเลิก
+                </Button>
+                <Button type="submit" disabled={saving}>
+                  {saving ? "กำลังบันทึก..." : "บันทึก"}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <ConfirmDialog
         open={deleteId !== null}
         onClose={() => setDeleteId(null)}

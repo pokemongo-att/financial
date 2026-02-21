@@ -1,7 +1,7 @@
 "use client";
 
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "./ui/dialog";
+import { Button } from "./ui/button";
 
 export function ConfirmDialog({
   open,
@@ -25,20 +25,26 @@ export function ConfirmDialog({
   loading?: boolean;
 }) {
   return (
-    <Dialog open={open} onClose={onClose}>
+    <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent>
-        <DialogTitle>{title}</DialogTitle>
-        {description && (
-          <p className="mt-2 text-sm text-slate-500">{description}</p>
-        )}
-        <div className="mt-6 flex justify-end gap-2">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          {description && (
+            <DialogDescription>{description}</DialogDescription>
+          )}
+        </DialogHeader>
+        <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={loading}>
             {cancelLabel}
           </Button>
-          <Button variant={variant} onClick={onConfirm} disabled={loading}>
+          <Button
+            variant={variant === "destructive" ? "destructive" : "default"}
+            onClick={onConfirm}
+            disabled={loading}
+          >
             {loading ? "กำลังดำเนินการ..." : confirmLabel}
           </Button>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

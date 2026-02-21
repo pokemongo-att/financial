@@ -10,9 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, GripVertical, MoreHorizontal } from "lucide-react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { DropdownMenu, DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuContent } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { MoneyInput } from "@/components/MoneyInput";
 
@@ -146,9 +146,17 @@ export function TemplateItemsEditor({
                       {formatTHB(item.defaultAmountCents)}
                     </span>
                     <DropdownMenu>
-                      <DropdownMenuItem variant="destructive" onClick={() => setDeleteId(item.id)}>
-                        <Trash2 className="w-3.5 h-3.5" /> ลบ
-                      </DropdownMenuItem>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-8 w-8 p-0">
+                          <span className="sr-only">Open menu</span>
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem className="text-red-600" onClick={() => setDeleteId(item.id)}>
+                          <Trash2 className="mr-2 h-4 w-4" /> ลบ
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
                 </div>

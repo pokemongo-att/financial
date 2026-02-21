@@ -93,7 +93,8 @@ export async function updateMonthlyItem(
     plannedAmountCents?: number;
     actualAmountCents?: number | null;
     status?: "PLANNED" | "DONE" | "SKIPPED";
-    note?: string;
+    note?: string | null;
+    interestRate?: string | null;
     paymentMethod?: string;
   }
 ) {

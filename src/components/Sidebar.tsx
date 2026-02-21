@@ -13,6 +13,8 @@ import {
   TrendingUp,
   Menu,
   X,
+  Home,
+  Shield,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -22,6 +24,8 @@ const NAV_ITEMS = [
   { href: "/family", label: "ครอบครัว", icon: Users },
   { href: "/portfolio", label: "Portfolio", icon: Briefcase },
   { href: "/portfolio/dividends", label: "ปันผล", icon: TrendingUp },
+  { href: "/home-loan", label: "บ้าน", icon: Home },
+  { href: "/insurances", label: "พอร์ตประกัน", icon: Shield },
 ];
 
 export function Sidebar() {

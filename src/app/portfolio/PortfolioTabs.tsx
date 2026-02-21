@@ -76,7 +76,7 @@ export function PortfolioTabs({
           ))}
         </div>
         <Button onClick={() => setShowAdd(!showAdd)}>
-          <Plus className="w-4 h-4" />
+          <Plus className="w-4 h-4 mr-2" />
           เพิ่ม {TABS.find((t) => t.key === tab)?.label}
         </Button>
       </div>

@@ -18,6 +18,11 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
+function isLoanLikeItem(item: Item) {
+  const name = item.name.toLowerCase();
+  return item.interestRate != null || name.includes("สินเชื่อ") || name.includes("loan");
+}
+
 type Item = {
   id: string;
   category: "INCOME" | "EXPENSE" | "SAVING" | "GOAL" | "FAMILY";
@@ -142,7 +147,7 @@ export function MonthlyItemsTable({ items }: { items: Item[] }) {
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="bg-white text-slate-900 border-slate-200 shadow-lg">
               <DropdownMenuItem onClick={() => setEditItem(row.original)}>
                 <Pencil className="mr-2 h-4 w-4" />
                 แก้ไขยอด/หมายเหตุ
@@ -179,9 +184,12 @@ export function MonthlyItemsTable({ items }: { items: Item[] }) {
     if (!editItem) return;
     
     const formData = new FormData(e.currentTarget);
-    const actualAmount = formData.get("actualAmount") as string;
-    const note = formData.get("note") as string;
-    const interestRate = formData.get("interestRate") as string;
+    const actualAmountRaw = formData.get("actualAmount");
+    const noteRaw = formData.get("note");
+    const interestRateRaw = formData.get("interestRate");
+    const actualAmount = typeof actualAmountRaw === "string" ? actualAmountRaw.trim() : "";
+    const note = typeof noteRaw === "string" ? noteRaw.trim() : "";
+    const interestRate = typeof interestRateRaw === "string" ? interestRateRaw.trim() : "";
 
     setSaving(true);
     try {
@@ -242,7 +250,7 @@ export function MonthlyItemsTable({ items }: { items: Item[] }) {
                 <p className="text-xs text-slate-500">ยอดที่วางแผนไว้: {(editItem.plannedAmountCents / 100).toLocaleString()} บาท</p>
               </div>
               
-              {editItem.interestRate !== undefined && (
+              {isLoanLikeItem(editItem) && (
                 <div className="space-y-2">
                   <Label htmlFor="interestRate">ดอกเบี้ย (%)</Label>
                   <Input

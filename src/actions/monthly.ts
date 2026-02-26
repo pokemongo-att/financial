@@ -1,9 +1,17 @@
 "use server";
 
 import { db } from "@/db";
-import { monthlyPlans, monthlyItems, templateItems } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { monthlyPlans, monthlyItems, templateItems, goalAccounts, goalTransactions, familyTransactions } from "@/db/schema";
+import { eq, and, inArray } from "drizzle-orm";
 import { createMonthlyPlanSchema, updateMonthlyItemSchema } from "@/lib/validators/monthly";
+
+function toSlug(value: string) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
 
 export async function getMonthlyPlan(userId: string, month: string) {
   const [plan] = await db
@@ -74,8 +82,10 @@ export async function createMonthlyPlanFromTemplate(
     await db.insert(monthlyItems).values(
       tplItems.map((ti) => ({
         planId: plan.id,
+        slug: ti.slug,
         category: ti.category,
         name: ti.name,
+        interestRate: ti.interestRate,
         plannedAmountCents: ti.defaultAmountCents,
         actualAmountCents: null,
         status: "PLANNED" as const,
@@ -99,6 +109,24 @@ export async function updateMonthlyItem(
   }
 ) {
   const parsed = updateMonthlyItemSchema.parse(data);
+  const [currentItem] = await db
+    .select()
+    .from(monthlyItems)
+    .where(eq(monthlyItems.id, itemId));
+
+  if (!currentItem) {
+    throw new Error("ไม่พบรายการรายเดือนที่ต้องการอัปเดต");
+  }
+
+  const [plan] = await db
+    .select()
+    .from(monthlyPlans)
+    .where(eq(monthlyPlans.id, currentItem.planId));
+
+  if (!plan) {
+    throw new Error("ไม่พบแผนรายเดือนของรายการนี้");
+  }
+
   const updateData: Record<string, unknown> = { ...parsed, updatedAt: new Date() };
 
   if (parsed.status === "DONE") {
@@ -110,6 +138,77 @@ export async function updateMonthlyItem(
     .set(updateData)
     .where(eq(monthlyItems.id, itemId))
     .returning();
+
+  if (updated.category !== "GOAL") {
+    return updated;
+  }
+
+  if (updated.status !== "DONE") {
+    await db
+      .delete(goalTransactions)
+      .where(eq(goalTransactions.linkedMonthlyItemId, itemId));
+    return updated;
+  }
+
+  const goalSlug = updated.slug || toSlug(updated.name);
+  const amountCents = updated.actualAmountCents ?? updated.plannedAmountCents;
+
+  if (amountCents <= 0) {
+    await db
+      .delete(goalTransactions)
+      .where(eq(goalTransactions.linkedMonthlyItemId, itemId));
+    return updated;
+  }
+
+  let [goal] = await db
+    .select()
+    .from(goalAccounts)
+    .where(
+      and(
+        eq(goalAccounts.userId, plan.userId),
+        eq(goalAccounts.slug, goalSlug)
+      )
+    );
+
+  if (!goal) {
+    [goal] = await db
+      .insert(goalAccounts)
+      .values({
+        userId: plan.userId,
+        name: updated.name,
+        slug: goalSlug,
+        openingBalanceCents: 0,
+      })
+      .returning();
+  }
+
+  const [existingLinkedTx] = await db
+    .select()
+    .from(goalTransactions)
+    .where(eq(goalTransactions.linkedMonthlyItemId, updated.id));
+
+  if (existingLinkedTx) {
+    await db
+      .update(goalTransactions)
+      .set({
+        goalAccountId: goal.id,
+        amountCents,
+        date: `${plan.month}-01`,
+        note: `Auto-record จาก checklist เดือน ${plan.month}`,
+        updatedAt: new Date(),
+      })
+      .where(eq(goalTransactions.id, existingLinkedTx.id));
+  } else {
+    await db.insert(goalTransactions).values({
+      goalAccountId: goal.id,
+      type: "DEPOSIT",
+      amountCents,
+      date: `${plan.month}-01`,
+      note: `Auto-record จาก checklist เดือน ${plan.month}`,
+      linkedMonthlyItemId: updated.id,
+    });
+  }
+
   return updated;
 }
 
@@ -137,4 +236,36 @@ export async function addMonthlyItem(
 
 export async function deleteMonthlyItem(itemId: string) {
   await db.delete(monthlyItems).where(eq(monthlyItems.id, itemId));
+}
+
+export async function clearMonthlyTestData(userId: string) {
+  const plans = await db
+    .select({ id: monthlyPlans.id })
+    .from(monthlyPlans)
+    .where(eq(monthlyPlans.userId, userId));
+
+  if (plans.length === 0) {
+    return { deletedPlans: 0 };
+  }
+
+  const planIds = plans.map((p) => p.id);
+
+  const items = await db
+    .select({ id: monthlyItems.id })
+    .from(monthlyItems)
+    .where(inArray(monthlyItems.planId, planIds));
+
+  if (items.length > 0) {
+    await db
+      .delete(goalTransactions)
+      .where(inArray(goalTransactions.linkedMonthlyItemId, items.map((i) => i.id)));
+  }
+
+  await db
+    .delete(familyTransactions)
+    .where(inArray(familyTransactions.monthlyPlanId, planIds));
+
+  await db.delete(monthlyPlans).where(eq(monthlyPlans.userId, userId));
+
+  return { deletedPlans: planIds.length };
 }

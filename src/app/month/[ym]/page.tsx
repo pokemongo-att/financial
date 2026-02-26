@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { MonthPicker } from "@/components/MonthPicker";
 import { MonthlyItemsTable } from "./MonthlyItemsTable";
 import { CreatePlanForm } from "./CreatePlanForm";
+import { MonthMaintenanceActions } from "./MonthMaintenanceActions";
 
 export default async function MonthPage({
   params,
@@ -26,6 +27,7 @@ export default async function MonthPage({
   return (
     <div className="space-y-6">
       <PageHeader title="แผนรายเดือน" subtitle={`เดือน ${ym}`}>
+        <MonthMaintenanceActions userId={userId} />
         <MonthPicker currentMonth={ym} />
       </PageHeader>
 

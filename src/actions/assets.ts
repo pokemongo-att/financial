@@ -3,7 +3,7 @@
 import { db } from "@/db";
 import { assetAccounts, assetTransactions } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
-import { createAssetAccountSchema, createAssetTransactionSchema } from "@/lib/validators/assets";
+import { createAssetAccountSchema, createAssetTransactionSchema, updateAssetAccountSchema } from "@/lib/validators/assets";
 import { calculateHoldings, calculateBankBalance } from "@/lib/calc/portfolio";
 
 export async function getAssetAccounts(userId: string, type?: "STOCK" | "FUND" | "CRYPTO" | "BANK") {
@@ -69,6 +69,19 @@ export async function createAssetAccount(
     .values({ ...parsed, userId })
     .returning();
   return created;
+}
+
+export async function updateAssetAccount(
+  assetId: string,
+  data: { symbol?: string; name?: string }
+) {
+  const parsed = updateAssetAccountSchema.parse(data);
+  const [updated] = await db
+    .update(assetAccounts)
+    .set({ ...parsed, updatedAt: new Date() })
+    .where(eq(assetAccounts.id, assetId))
+    .returning();
+  return updated;
 }
 
 export async function createAssetTransaction(

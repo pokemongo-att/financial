@@ -1,13 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { formatTHB } from "@/lib/money";
+import { useRouter } from "next/navigation";
+import { formatTHB, toCents } from "@/lib/money";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { HomeLoanSummary, HomeLoanTransaction } from "@/lib/calc/home-loan";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend, ComposedChart } from "recharts";
 import { DataTable } from "@/components/DataTable";
 import { type ColumnDef } from "@tanstack/react-table";
+import { updateHomeLoan } from "@/actions/home-loan";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 type LoanProps = {
   loan: {
@@ -20,7 +27,30 @@ type LoanProps = {
 };
 
 export function HomeLoanDetails({ loan, transactions }: LoanProps) {
+  const router = useRouter();
   const summary = calculateHomeLoanSummary(loan.principalBalanceCents, transactions);
+  const [showEdit, setShowEdit] = useState(false);
+  const [editPrincipal, setEditPrincipal] = useState((loan.principalBalanceCents / 100).toFixed(2));
+  const [editSlug, setEditSlug] = useState(loan.slug);
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  async function handleSaveOpening(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setSavingEdit(true);
+    try {
+      await updateHomeLoan(loan.id, {
+        principalBalanceCents: editPrincipal ? toCents(parseFloat(editPrincipal)) : 0,
+        slug: editSlug.trim() || loan.slug,
+      });
+      toast.success("อัปเดตยอดตั้งต้นสินเชื่อบ้านแล้ว");
+      setShowEdit(false);
+      router.refresh();
+    } catch {
+      toast.error("เกิดข้อผิดพลาดในการอัปเดต");
+    } finally {
+      setSavingEdit(false);
+    }
+  }
 
   const columns: ColumnDef<HomeLoanSummary["monthlyData"][0]>[] = [
     {
@@ -56,6 +86,20 @@ export function HomeLoanDetails({ loan, transactions }: LoanProps) {
 
   return (
     <div className="space-y-6 mt-6">
+      <div className="flex justify-end">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            setEditPrincipal((loan.principalBalanceCents / 100).toFixed(2));
+            setEditSlug(loan.slug);
+            setShowEdit(true);
+          }}
+        >
+          แก้ยอดตั้งต้น/Slug
+        </Button>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
@@ -180,6 +224,44 @@ export function HomeLoanDetails({ loan, transactions }: LoanProps) {
           />
         </CardContent>
       </Card>
+
+      <Dialog open={showEdit} onOpenChange={setShowEdit}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>แก้ไขข้อมูลตั้งต้นสินเชื่อบ้าน</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSaveOpening} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="loanSlug">Slug</Label>
+              <Input
+                id="loanSlug"
+                value={editSlug}
+                onChange={(e) => setEditSlug(e.target.value.toLowerCase())}
+                placeholder="เช่น loan144-49"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="loanPrincipal">ยอดเงินต้นเริ่มต้น (บาท)</Label>
+              <Input
+                id="loanPrincipal"
+                type="number"
+                step="0.01"
+                value={editPrincipal}
+                onChange={(e) => setEditPrincipal(e.target.value)}
+                placeholder="0.00"
+              />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setShowEdit(false)}>
+                ยกเลิก
+              </Button>
+              <Button type="submit" disabled={savingEdit}>
+                {savingEdit ? "กำลังบันทึก..." : "บันทึก"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

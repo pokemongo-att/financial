@@ -18,7 +18,7 @@ export async function getFamilyMembers(userId: string) {
         .where(eq(familyTransactions.familyMemberId, member.id))
         .orderBy(familyTransactions.date);
 
-      const totalCents = txs.reduce((sum, tx) => sum + tx.amountCents, 0);
+      const totalCents = member.openingBalanceCents + txs.reduce((sum, tx) => sum + tx.amountCents, 0);
       return { ...member, transactions: txs, totalCents };
     })
   );
@@ -28,13 +28,25 @@ export async function getFamilyMembers(userId: string) {
 
 export async function createFamilyMember(
   userId: string,
-  data: { name: string; type: "PARENT" | "CHILD" }
+  data: { name: string; type: "PARENT" | "CHILD"; openingBalanceCents?: number }
 ) {
   const [created] = await db
     .insert(familyMembers)
-    .values({ ...data, userId })
+    .values({ ...data, openingBalanceCents: data.openingBalanceCents ?? 0, userId })
     .returning();
   return created;
+}
+
+export async function updateFamilyMember(
+  memberId: string,
+  data: { name?: string; type?: "PARENT" | "CHILD"; openingBalanceCents?: number }
+) {
+  const [updated] = await db
+    .update(familyMembers)
+    .set({ ...data, updatedAt: new Date() })
+    .where(eq(familyMembers.id, memberId))
+    .returning();
+  return updated;
 }
 
 export async function createFamilyTransaction(

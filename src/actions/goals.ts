@@ -2,15 +2,24 @@
 
 import { db } from "@/db";
 import { goalAccounts, goalTransactions } from "@/db/schema";
-import { eq } from "drizzle-orm";
-import { createGoalSchema, createGoalTransactionSchema } from "@/lib/validators/goals";
+import { asc, eq } from "drizzle-orm";
+import { createGoalSchema, createGoalTransactionSchema, updateGoalSchema } from "@/lib/validators/goals";
 import { calculateGoalBalance } from "@/lib/calc/goals";
+
+function toSlug(value: string) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
 
 export async function getGoals(userId: string) {
   const goals = await db
     .select()
     .from(goalAccounts)
-    .where(eq(goalAccounts.userId, userId));
+    .where(eq(goalAccounts.userId, userId))
+    .orderBy(asc(goalAccounts.createdAt), asc(goalAccounts.id));
 
   // Calculate balance for each goal
   const results = await Promise.all(
@@ -49,14 +58,27 @@ export async function getGoalDetail(goalId: string) {
 
 export async function createGoal(
   userId: string,
-  data: { name: string; openingBalanceCents?: number }
+  data: { name: string; slug?: string; openingBalanceCents?: number }
 ) {
   const parsed = createGoalSchema.parse(data);
   const [created] = await db
     .insert(goalAccounts)
-    .values({ ...parsed, userId })
+    .values({ ...parsed, slug: parsed.slug || toSlug(parsed.name), userId })
     .returning();
   return created;
+}
+
+export async function updateGoal(
+  goalId: string,
+  data: { name?: string; slug?: string; openingBalanceCents?: number }
+) {
+  const parsed = updateGoalSchema.parse(data);
+  const [updated] = await db
+    .update(goalAccounts)
+    .set({ ...parsed, updatedAt: new Date() })
+    .where(eq(goalAccounts.id, goalId))
+    .returning();
+  return updated;
 }
 
 export async function createGoalTransaction(

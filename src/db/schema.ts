@@ -135,6 +135,7 @@ export const goalAccounts = pgTable("goal_accounts", {
     .notNull()
     .references(() => users.id),
   name: varchar("name", { length: 255 }).notNull(),
+  slug: varchar("slug", { length: 100 }),
   openingBalanceCents: integer("opening_balance_cents").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -170,6 +171,7 @@ export const familyMembers = pgTable("family_members", {
     .references(() => users.id),
   name: varchar("name", { length: 255 }).notNull(),
   type: familyMemberTypeEnum("type").notNull(),
+  openingBalanceCents: integer("opening_balance_cents").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

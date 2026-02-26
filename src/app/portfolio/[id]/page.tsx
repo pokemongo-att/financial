@@ -1,12 +1,9 @@
 import { getAssetDetail } from "@/actions/assets";
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import { formatTHB } from "@/lib/money";
 import { Card, CardTitle, CardValue } from "@/components/ui/card";
-import { PageHeader } from "@/components/PageHeader";
-import { Badge } from "@/components/ui/badge";
 import { AssetTransactionsList } from "./AssetTransactionsList";
-import { ArrowLeft } from "lucide-react";
+import { AssetDetailHeader } from "./AssetDetailHeader";
 
 export default async function AssetDetailPage({
   params,
@@ -23,20 +20,12 @@ export default async function AssetDetailPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Link href="/portfolio" className="text-slate-400 hover:text-slate-600 transition-colors">
-          <ArrowLeft className="w-4 h-4" />
-        </Link>
-        <PageHeader
-          title={
-            <span>
-              {asset.symbol}
-              {asset.name && <span className="text-slate-400 font-normal ml-2">— {asset.name}</span>}
-            </span>
-          }
-        />
-        <Badge>{asset.type}</Badge>
-      </div>
+      <AssetDetailHeader
+        assetId={id}
+        symbol={asset.symbol}
+        name={asset.name}
+        type={asset.type}
+      />
 
       {isBank ? (
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">

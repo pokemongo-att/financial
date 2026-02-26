@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createTemplateItem, deleteTemplateItem } from "@/actions/templates";
+import { createTemplateItem, deleteTemplateItem, updateTemplateItem } from "@/actions/templates";
 import { formatTHB, toCents } from "@/lib/money";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,24 +10,32 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { Plus, Trash2, GripVertical, MoreHorizontal } from "lucide-react";
+import { Plus, Trash2, MoreHorizontal } from "lucide-react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { DropdownMenu, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuContent } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { MoneyInput } from "@/components/MoneyInput";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 type Item = {
   id: string;
   category: "INCOME" | "EXPENSE" | "SAVING" | "GOAL" | "FAMILY";
   name: string;
+  slug: string | null;
   defaultAmountCents: number;
+  interestRate: string | null;
+  accountOrSubType: string | null;
   isActive: boolean;
   sortOrder: number;
 };
 
+type EditorCategory = "INCOME" | "EXPENSE" | "SAVING" | "GOAL" | "FAMILY" | "LOAN";
+
 const CATEGORY_OPTIONS = [
   { value: "INCOME", label: "รายรับ" },
   { value: "EXPENSE", label: "รายจ่าย" },
+  { value: "LOAN", label: "ค่าสินเชื่อ" },
   { value: "SAVING", label: "เงินออม" },
   { value: "GOAL", label: "เป้าหมาย" },
   { value: "FAMILY", label: "ครอบครัว" },
@@ -36,6 +44,7 @@ const CATEGORY_OPTIONS = [
 const BADGE_VARIANT: Record<string, "success" | "destructive" | "info" | "purple" | "orange"> = {
   INCOME: "success",
   EXPENSE: "destructive",
+  LOAN: "destructive",
   SAVING: "info",
   GOAL: "purple",
   FAMILY: "orange",
@@ -50,27 +59,40 @@ export function TemplateItemsEditor({
 }) {
   const router = useRouter();
   const [showAdd, setShowAdd] = useState(false);
-  const [category, setCategory] = useState<string>("INCOME");
+  const [category, setCategory] = useState<EditorCategory>("INCOME");
   const [name, setName] = useState("");
+  const [slug, setSlug] = useState("");
   const [amount, setAmount] = useState("");
+  const [interestRate, setInterestRate] = useState("");
   const [isPending, startTransition] = useTransition();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [editItem, setEditItem] = useState<Item | null>(null);
+  const [editSlug, setEditSlug] = useState("");
+  const [editAmount, setEditAmount] = useState("");
+  const [editInterestRate, setEditInterestRate] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
 
   function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
     startTransition(async () => {
       try {
+        const isLoanTemplate = category === "LOAN";
         await createTemplateItem({
           templateId,
-          category: category as "INCOME" | "EXPENSE" | "SAVING" | "GOAL" | "FAMILY",
+          category: isLoanTemplate ? "EXPENSE" : (category as "INCOME" | "EXPENSE" | "SAVING" | "GOAL" | "FAMILY"),
           name: name.trim(),
+          slug: slug.trim() || undefined,
           defaultAmountCents: amount ? toCents(parseFloat(amount)) : 0,
+          interestRate: isLoanTemplate ? interestRate.trim() || null : null,
+          accountOrSubType: isLoanTemplate ? "HOME_LOAN" : undefined,
           sortOrder: items.length,
         });
         setName("");
+        setSlug("");
         setAmount("");
+        setInterestRate("");
         setShowAdd(false);
         toast.success("เพิ่มรายการแล้ว");
         router.refresh();
@@ -78,6 +100,33 @@ export function TemplateItemsEditor({
         toast.error("เกิดข้อผิดพลาด");
       }
     });
+  }
+
+  async function handleSaveEdit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!editItem) return;
+
+    setSavingEdit(true);
+    try {
+      await updateTemplateItem(editItem.id, {
+        slug: editSlug.trim() || undefined,
+        defaultAmountCents: editAmount ? toCents(parseFloat(editAmount)) : 0,
+        interestRate:
+          editItem.accountOrSubType === "HOME_LOAN"
+            ? editInterestRate.trim() || null
+            : undefined,
+      });
+      toast.success("บันทึกยอดเริ่มต้นแล้ว");
+      setEditItem(null);
+      setEditSlug("");
+      setEditAmount("");
+      setEditInterestRate("");
+      router.refresh();
+    } catch {
+      toast.error("เกิดข้อผิดพลาดในการบันทึก");
+    } finally {
+      setSavingEdit(false);
+    }
   }
 
   async function handleDelete() {
@@ -97,7 +146,12 @@ export function TemplateItemsEditor({
 
   const grouped = CATEGORY_OPTIONS.map((cat) => ({
     ...cat,
-    items: items.filter((i) => i.category === cat.value),
+    items:
+      cat.value === "LOAN"
+        ? items.filter((i) => i.accountOrSubType === "HOME_LOAN")
+        : cat.value === "EXPENSE"
+          ? items.filter((i) => i.category === "EXPENSE" && i.accountOrSubType !== "HOME_LOAN")
+          : items.filter((i) => i.category === cat.value),
   }));
 
   return (
@@ -113,13 +167,25 @@ export function TemplateItemsEditor({
         <Card className="p-4">
           <form onSubmit={handleAdd} className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <Select value={category} onChange={(e) => setCategory(e.target.value)}>
+              <Select value={category} onChange={(e) => setCategory(e.target.value as EditorCategory)}>
                 {CATEGORY_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </Select>
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="ชื่อรายการ" />
+              <Input value={slug} onChange={(e) => setSlug(e.target.value.toLowerCase())} placeholder="slug เช่น goal-travel" />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <MoneyInput value={amount} onChange={setAmount} placeholder="จำนวนเงิน" />
+              {category === "LOAN" && (
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={interestRate}
+                  onChange={(e) => setInterestRate(e.target.value)}
+                  placeholder="ดอกเบี้ย % เช่น 3.50"
+                />
+              )}
             </div>
             <Button type="submit" disabled={isPending}>
               {isPending ? "กำลังเพิ่ม..." : "เพิ่ม"}
@@ -141,6 +207,9 @@ export function TemplateItemsEditor({
                   <span className={cn("text-sm font-medium text-slate-900", !item.isActive && "line-through text-slate-400")}>
                     {item.name}
                   </span>
+                  {item.interestRate && (
+                    <span className="ml-2 text-xs text-slate-500">ดอกเบี้ย {item.interestRate}%</span>
+                  )}
                   <div className="flex items-center gap-4">
                     <span className="text-sm font-medium tabular-nums text-slate-600">
                       {formatTHB(item.defaultAmountCents)}
@@ -153,6 +222,16 @@ export function TemplateItemsEditor({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setEditItem(item);
+                            setEditSlug(item.slug || "");
+                            setEditAmount((item.defaultAmountCents / 100).toFixed(2));
+                            setEditInterestRate(item.interestRate || "");
+                          }}
+                        >
+                          ปรับยอดเริ่มต้น
+                        </DropdownMenuItem>
                         <DropdownMenuItem className="text-red-600" onClick={() => setDeleteId(item.id)}>
                           <Trash2 className="mr-2 h-4 w-4" /> ลบ
                         </DropdownMenuItem>
@@ -176,6 +255,66 @@ export function TemplateItemsEditor({
         confirmLabel="ลบ"
         loading={deleting}
       />
+
+      <Dialog
+        open={editItem !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setEditItem(null);
+            setEditSlug("");
+            setEditAmount("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>ปรับยอดเริ่มต้น: {editItem?.name}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSaveEdit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="editSlug">Slug</Label>
+              <Input
+                id="editSlug"
+                value={editSlug}
+                onChange={(e) => setEditSlug(e.target.value.toLowerCase())}
+                placeholder="เช่น goal-travel"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="editAmount">ยอดเริ่มต้น (บาท)</Label>
+              <Input
+                id="editAmount"
+                type="number"
+                step="0.01"
+                value={editAmount}
+                onChange={(e) => setEditAmount(e.target.value)}
+                placeholder="0.00"
+              />
+            </div>
+            {editItem?.accountOrSubType === "HOME_LOAN" && (
+              <div className="space-y-2">
+                <Label htmlFor="editInterestRate">ดอกเบี้ย (%)</Label>
+                <Input
+                  id="editInterestRate"
+                  type="number"
+                  step="0.01"
+                  value={editInterestRate}
+                  onChange={(e) => setEditInterestRate(e.target.value)}
+                  placeholder="เช่น 3.50"
+                />
+              </div>
+            )}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditItem(null)}>
+                ยกเลิก
+              </Button>
+              <Button type="submit" disabled={savingEdit}>
+                {savingEdit ? "กำลังบันทึก..." : "บันทึก"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

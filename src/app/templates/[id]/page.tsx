@@ -1,9 +1,7 @@
 import { getTemplateWithItems } from "@/actions/templates";
 import { notFound } from "next/navigation";
 import { TemplateItemsEditor } from "./TemplateItemsEditor";
-import { PageHeader } from "@/components/PageHeader";
-import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { TemplateDetailHeader } from "./TemplateDetailHeader";
 
 export default async function TemplateDetailPage({
   params,
@@ -16,12 +14,7 @@ export default async function TemplateDetailPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Link href="/templates" className="text-slate-400 hover:text-slate-600 transition-colors">
-          <ArrowLeft className="w-4 h-4" />
-        </Link>
-        <PageHeader title={template.name} subtitle="แก้ไขรายการ template" />
-      </div>
+      <TemplateDetailHeader templateId={id} templateName={template.name} />
       <TemplateItemsEditor templateId={id} items={template.items} />
     </div>
   );

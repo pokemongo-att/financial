@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { EmptyState } from "@/components/EmptyState";
-import { Plus, Briefcase, ChevronRight } from "lucide-react";
+import { Plus, Briefcase, ChevronRight, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import type { Holdings, BankBalance } from "@/lib/calc/portfolio";
 
@@ -65,8 +65,25 @@ export function PortfolioTabs({
     });
   }
 
+  const stocksCost = stocks.reduce((s, a) => s + (a.holdings?.totalCostCents ?? 0), 0);
+  const fundsCost = funds.reduce((s, a) => s + (a.holdings?.totalCostCents ?? 0), 0);
+  const cryptoCost = crypto.reduce((s, a) => s + (a.holdings?.totalCostCents ?? 0), 0);
+  const bankBalance = banks.reduce((s, a) => s + (a.bankBalance?.currentBalanceCents ?? 0), 0);
+  const totalRealizedPnL = [...stocks, ...funds, ...crypto].reduce((s, a) => s + (a.holdings?.realizedPnLCents ?? 0), 0);
+  const totalDividends = [...stocks, ...funds, ...crypto].reduce((s, a) => s + (a.holdings?.dividendsTotalCents ?? 0), 0);
+  const grandTotal = stocksCost + fundsCost + cryptoCost + bankBalance;
+
   return (
     <div className="space-y-4">
+      <PortfolioSummary
+        stocksCost={stocksCost}
+        fundsCost={fundsCost}
+        cryptoCost={cryptoCost}
+        bankBalance={bankBalance}
+        grandTotal={grandTotal}
+        totalRealizedPnL={totalRealizedPnL}
+        totalDividends={totalDividends}
+      />
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="flex gap-1.5 flex-wrap">
           {TABS.map((t) => (
@@ -93,6 +110,48 @@ export function PortfolioTabs({
 
       {tab === "BANK" ? <BankTable data={currentData} /> : <HoldingsTable data={currentData} />}
     </div>
+  );
+}
+
+function PortfolioSummary({
+  stocksCost, fundsCost, cryptoCost, bankBalance, grandTotal, totalRealizedPnL, totalDividends,
+}: {
+  stocksCost: number; fundsCost: number; cryptoCost: number; bankBalance: number;
+  grandTotal: number; totalRealizedPnL: number; totalDividends: number;
+}) {
+  return (
+    <Card className="p-5">
+      <div className="flex items-center gap-2 mb-4">
+        <TrendingUp className="w-4 h-4 text-indigo-500" />
+        <span className="text-sm font-semibold text-slate-700">ยอดรวมทั้งหมด</span>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        <div>
+          <p className="text-xs text-slate-400 mb-0.5">หุ้น</p>
+          <p className="text-sm font-semibold tabular-nums text-slate-900">{formatTHB(stocksCost)}</p>
+        </div>
+        <div>
+          <p className="text-xs text-slate-400 mb-0.5">กองทุน</p>
+          <p className="text-sm font-semibold tabular-nums text-slate-900">{formatTHB(fundsCost)}</p>
+        </div>
+        <div>
+          <p className="text-xs text-slate-400 mb-0.5">BTC/Crypto</p>
+          <p className="text-sm font-semibold tabular-nums text-slate-900">{formatTHB(cryptoCost)}</p>
+        </div>
+        <div>
+          <p className="text-xs text-slate-400 mb-0.5">เงินฝาก</p>
+          <p className="text-sm font-semibold tabular-nums text-indigo-600">{formatTHB(bankBalance)}</p>
+        </div>
+        <div className="col-span-2 sm:col-span-1 border-t sm:border-t-0 sm:border-l border-slate-100 sm:pl-4 pt-3 sm:pt-0">
+          <p className="text-xs text-slate-400 mb-0.5">รวมทั้งหมด</p>
+          <p className="text-lg font-bold tabular-nums text-slate-900">{formatTHB(grandTotal)}</p>
+        </div>
+      </div>
+      <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap gap-4 text-xs text-slate-500">
+        <span>Realized P/L: <span className={`font-semibold tabular-nums ${totalRealizedPnL >= 0 ? "text-emerald-600" : "text-red-600"}`}>{formatTHB(totalRealizedPnL)}</span></span>
+        <span>ปันผลรวม: <span className="font-semibold tabular-nums text-indigo-600">{formatTHB(totalDividends)}</span></span>
+      </div>
+    </Card>
   );
 }
 

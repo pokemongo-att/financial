@@ -216,7 +216,7 @@ export function MonthlyItemsTable({ items }: { items: Item[] }) {
         searchPlaceholder="ค้นหารายการ..."
         emptyTitle="ไม่มีรายการ"
         toolbar={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-1.5">
             {categories.map((cat) => (
               <Button
                 key={cat}

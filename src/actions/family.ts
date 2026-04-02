@@ -68,3 +68,8 @@ export async function createFamilyTransaction(
 export async function deleteFamilyTransaction(txId: string) {
   await db.delete(familyTransactions).where(eq(familyTransactions.id, txId));
 }
+
+export async function deleteFamilyMember(memberId: string) {
+  // Transactions are cascade-deleted via FK
+  await db.delete(familyMembers).where(eq(familyMembers.id, memberId));
+}

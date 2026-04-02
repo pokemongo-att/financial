@@ -102,3 +102,8 @@ export async function createGoalTransaction(
 export async function deleteGoalTransaction(txId: string) {
   await db.delete(goalTransactions).where(eq(goalTransactions.id, txId));
 }
+
+export async function deleteGoal(goalId: string) {
+  // Transactions are cascade-deleted via FK
+  await db.delete(goalAccounts).where(eq(goalAccounts.id, goalId));
+}

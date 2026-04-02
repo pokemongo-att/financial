@@ -24,7 +24,7 @@ export default async function RootLayout({
         <div className="flex min-h-screen">
           {!isLoginPage && <Sidebar />}
           <main className="flex-1 overflow-auto">
-            <div className={`container mx-auto max-w-7xl px-4 py-6 md:px-8 md:py-8 ${isLoginPage ? "p-0 max-w-none" : ""}`}>
+            <div className={`container mx-auto max-w-7xl px-4 pt-14 pb-6 md:pt-8 md:px-8 md:pb-8 ${isLoginPage ? "p-0 max-w-none" : ""}`}>
               {children}
             </div>
           </main>

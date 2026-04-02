@@ -2,18 +2,20 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { createFamilyMember, createFamilyTransaction, updateFamilyMember } from "@/actions/family";
+import { createFamilyMember, createFamilyTransaction, updateFamilyMember, deleteFamilyMember } from "@/actions/family";
 import { formatTHB, toCents } from "@/lib/money";
 import { Card, CardTitle, CardValue } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { EmptyState } from "@/components/EmptyState";
-import { Plus, Users, Pencil } from "lucide-react";
+import { Plus, Users, Pencil, Trash2, Wallet } from "lucide-react";
 import { toast } from "sonner";
 import { MoneyInput } from "@/components/MoneyInput";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { Badge } from "@/components/ui/badge";
 
 type FamilyTx = {
   id: string;
@@ -47,6 +49,8 @@ export function FamilyList({
   const [editMember, setEditMember] = useState<Member | null>(null);
   const [editOpeningBalance, setEditOpeningBalance] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const [addingTxFor, setAddingTxFor] = useState<string | null>(null);
   const [txAmount, setTxAmount] = useState("");
@@ -116,15 +120,38 @@ export function FamilyList({
     });
   }
 
+  async function handleDelete() {
+    if (!deleteId) return;
+    setDeleting(true);
+    try {
+      await deleteFamilyMember(deleteId);
+      toast.success("ลบสมาชิกแล้ว");
+      router.refresh();
+    } catch {
+      toast.error("เกิดข้อผิดพลาดในการลบ");
+    } finally {
+      setDeleting(false);
+      setDeleteId(null);
+    }
+  }
+
   const parents = members.filter((m) => m.type === "PARENT");
   const children = members.filter((m) => m.type === "CHILD");
   const grandTotal = members.reduce((s, m) => s + m.totalCents, 0);
 
   return (
     <div className="space-y-6">
-      <Card className="p-5">
-        <CardTitle>ยอดรวมทั้งหมด</CardTitle>
-        <CardValue className="text-indigo-600">{formatTHB(grandTotal)}</CardValue>
+      <Card className="relative overflow-hidden p-5">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-500 to-pink-500" />
+        <div className="flex items-center gap-3">
+          <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
+            <Wallet className="w-5 h-5 text-indigo-600" />
+          </div>
+          <div>
+            <CardTitle className="text-sm text-slate-500">ยอดรวมทั้งหมด</CardTitle>
+            <CardValue className="text-indigo-600">{formatTHB(grandTotal)}</CardValue>
+          </div>
+        </div>
       </Card>
 
       <div className="flex justify-end">
@@ -136,15 +163,15 @@ export function FamilyList({
 
       {showAddMember && (
         <Card className="p-4">
-          <form onSubmit={handleAddMember} className="flex gap-3">
+          <form onSubmit={handleAddMember} className="flex flex-col sm:flex-row gap-3">
             <Input value={memberName} onChange={(e) => setMemberName(e.target.value)} placeholder="ชื่อ" className="flex-1" />
             <MoneyInput
               value={memberOpeningBalance}
               onChange={setMemberOpeningBalance}
               placeholder="ยอดตั้งต้น"
-              className="w-40"
+              className="w-full sm:w-40"
             />
-            <Select value={memberType} onChange={(e) => setMemberType(e.target.value as "PARENT" | "CHILD")} className="w-32">
+            <Select value={memberType} onChange={(e) => setMemberType(e.target.value as "PARENT" | "CHILD")} className="w-full sm:w-32">
               <option value="PARENT">พ่อแม่</option>
               <option value="CHILD">หลาน</option>
             </Select>
@@ -155,8 +182,8 @@ export function FamilyList({
 
       {parents.length > 0 && (
         <div>
-          <h2 className="text-sm font-medium text-slate-500 mb-3">พ่อแม่</h2>
-          <div className="space-y-3">
+          <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">พ่อแม่</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {parents.map((m) => (
               <MemberCard key={m.id} member={m} addingTxFor={addingTxFor} setAddingTxFor={setAddingTxFor}
                 txAmount={txAmount} setTxAmount={setTxAmount} txDate={txDate} setTxDate={setTxDate}
@@ -164,7 +191,8 @@ export function FamilyList({
                 onEditOpening={() => {
                   setEditMember(m);
                   setEditOpeningBalance((m.openingBalanceCents / 100).toFixed(2));
-                }} />
+                }}
+                onDelete={() => setDeleteId(m.id)} />
             ))}
           </div>
         </div>
@@ -172,8 +200,8 @@ export function FamilyList({
 
       {children.length > 0 && (
         <div>
-          <h2 className="text-sm font-medium text-slate-500 mb-3">หลาน</h2>
-          <div className="space-y-3">
+          <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">หลาน</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {children.map((m) => (
               <MemberCard key={m.id} member={m} addingTxFor={addingTxFor} setAddingTxFor={setAddingTxFor}
                 txAmount={txAmount} setTxAmount={setTxAmount} txDate={txDate} setTxDate={setTxDate}
@@ -181,7 +209,8 @@ export function FamilyList({
                 onEditOpening={() => {
                   setEditMember(m);
                   setEditOpeningBalance((m.openingBalanceCents / 100).toFixed(2));
-                }} />
+                }}
+                onDelete={() => setDeleteId(m.id)} />
             ))}
           </div>
         </div>
@@ -229,68 +258,108 @@ export function FamilyList({
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={deleteId !== null}
+        onClose={() => setDeleteId(null)}
+        onConfirm={handleDelete}
+        title="ลบสมาชิก"
+        description="คุณต้องการลบสมาชิกนี้หรือไม่? รายการธุรกรรมทั้งหมดจะถูกลบด้วย"
+        confirmLabel="ลบ"
+        loading={deleting}
+      />
     </div>
   );
 }
 
 function MemberCard({
   member, addingTxFor, setAddingTxFor, txAmount, setTxAmount, txDate, setTxDate, txNote, setTxNote, isPending, onAddTx,
-  onEditOpening,
+  onEditOpening, onDelete,
 }: {
-  member: { id: string; name: string; openingBalanceCents: number; transactions: { id: string; amountCents: number; date: string; note: string | null }[]; totalCents: number };
+  member: { id: string; name: string; type: "PARENT" | "CHILD"; openingBalanceCents: number; transactions: { id: string; amountCents: number; date: string; note: string | null }[]; totalCents: number };
   addingTxFor: string | null; setAddingTxFor: (v: string | null) => void;
   txAmount: string; setTxAmount: (v: string) => void;
   txDate: string; setTxDate: (v: string) => void;
   txNote: string; setTxNote: (v: string) => void;
   isPending: boolean; onAddTx: (e: React.FormEvent, memberId: string) => void;
   onEditOpening: () => void;
+  onDelete: () => void;
 }) {
+  const txTotal = member.transactions.reduce((s, tx) => s + tx.amountCents, 0);
   return (
-    <Card className="p-5">
-      <div className="flex items-center justify-between mb-3">
-        <div>
-          <h3 className="font-medium text-slate-900">{member.name}</h3>
-          <p className="text-sm text-slate-500">
-            ยอดตั้งต้น: <span className="font-medium tabular-nums text-slate-700">{formatTHB(member.openingBalanceCents)}</span>
-          </p>
-          <p className="text-sm text-slate-500">
-            ยอดรวม: <span className="font-medium tabular-nums text-indigo-600">{formatTHB(member.totalCents)}</span>
-          </p>
+    <Card className="group relative overflow-hidden hover:shadow-md transition-shadow">
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-400 to-rose-400" />
+      <div className="p-5">
+        <div className="flex items-start justify-between gap-2 mb-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center">
+              <Users className="w-4 h-4 text-orange-600" />
+            </div>
+            <div className="min-w-0">
+              <h3 className="font-semibold text-slate-900 truncate">{member.name}</h3>
+              <Badge variant={member.type === "PARENT" ? "purple" : "info"} className="mt-0.5">
+                {member.type === "PARENT" ? "พ่อแม่" : "หลาน"}
+              </Badge>
+            </div>
+          </div>
+          <div className="flex items-center gap-0.5">
+            <Button size="icon" variant="ghost" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity" onClick={onEditOpening}>
+              <Pencil className="w-3.5 h-3.5" />
+            </Button>
+            <Button size="icon" variant="ghost" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700 hover:bg-red-50" onClick={onDelete}>
+              <Trash2 className="w-3.5 h-3.5" />
+            </Button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button size="sm" variant="outline" onClick={onEditOpening}>
-            <Pencil className="w-3.5 h-3.5" />
-            แก้ยอดตั้งต้น
-          </Button>
-          <Button size="sm" onClick={() => setAddingTxFor(addingTxFor === member.id ? null : member.id)}>
+
+        <p className="text-2xl font-bold tabular-nums text-indigo-600 mb-3">
+          {formatTHB(member.totalCents)}
+        </p>
+
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          <div className="flex flex-col items-center rounded-lg bg-slate-50 px-2 py-2">
+            <span className="text-[10px] text-slate-400 mb-0.5">ตั้งต้น</span>
+            <span className="text-xs font-semibold tabular-nums text-slate-700">{formatTHB(member.openingBalanceCents)}</span>
+          </div>
+          <div className="flex flex-col items-center rounded-lg bg-emerald-50 px-2 py-2">
+            <span className="text-[10px] text-emerald-500 mb-0.5">ธุรกรรม</span>
+            <span className="text-xs font-semibold tabular-nums text-emerald-700">{formatTHB(txTotal)}</span>
+          </div>
+        </div>
+
+        <div className="flex justify-end mb-2">
+          <Button size="sm" variant="outline" onClick={() => setAddingTxFor(addingTxFor === member.id ? null : member.id)}>
             <Plus className="w-3.5 h-3.5" />
             เพิ่มรายการ
           </Button>
         </div>
-      </div>
 
-      {addingTxFor === member.id && (
-        <form onSubmit={(e) => onAddTx(e, member.id)} className="mb-3 flex gap-2 flex-wrap">
-          <MoneyInput value={txAmount} onChange={setTxAmount} placeholder="จำนวนเงิน" className="w-36" />
-          <Input type="date" value={txDate} onChange={(e) => setTxDate(e.target.value)} className="w-auto" />
-          <Input value={txNote} onChange={(e) => setTxNote(e.target.value)} placeholder="หมายเหตุ" className="flex-1" />
-          <Button type="submit" disabled={isPending} size="sm">บันทึก</Button>
-        </form>
-      )}
+        {addingTxFor === member.id && (
+          <form onSubmit={(e) => onAddTx(e, member.id)} className="mb-3 flex gap-2 flex-wrap">
+            <MoneyInput value={txAmount} onChange={setTxAmount} placeholder="จำนวนเงิน" className="w-full sm:w-36" />
+            <Input type="date" value={txDate} onChange={(e) => setTxDate(e.target.value)} className="w-full sm:w-auto" />
+            <Input value={txNote} onChange={(e) => setTxNote(e.target.value)} placeholder="หมายเหตุ" className="flex-1 min-w-[120px]" />
+            <Button type="submit" disabled={isPending} size="sm">บันทึก</Button>
+          </form>
+        )}
 
-      {member.transactions.length > 0 && (
-        <div className="border-t border-slate-100 pt-2 space-y-1">
-          {[...member.transactions].reverse().slice(0, 5).map((tx) => (
-            <div key={tx.id} className="flex items-center justify-between text-sm py-1">
-              <div className="flex items-center gap-2">
-                <span className="text-slate-400 text-xs">{tx.date}</span>
-                {tx.note && <span className="text-xs text-slate-400">{tx.note}</span>}
+        {member.transactions.length > 0 && (
+          <div className="border-t border-slate-100 pt-2 space-y-1">
+            {[...member.transactions].reverse().slice(0, 5).map((tx) => (
+              <div key={tx.id} className="flex items-center justify-between text-sm py-1">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-slate-400 text-xs flex-shrink-0">{tx.date}</span>
+                  {tx.note && <span className="text-xs text-slate-400 truncate">{tx.note}</span>}
+                </div>
+                <span className="font-medium tabular-nums text-slate-900 flex-shrink-0">{formatTHB(tx.amountCents)}</span>
               </div>
-              <span className="font-medium tabular-nums text-slate-900">{formatTHB(tx.amountCents)}</span>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+            {member.transactions.length > 5 && (
+              <p className="text-xs text-slate-400 text-center pt-1">+{member.transactions.length - 5} รายการ</p>
+            )}
+          </div>
+        )}
+      </div>
     </Card>
   );
 }

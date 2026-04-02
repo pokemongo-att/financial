@@ -3,6 +3,7 @@
 import { useTransition } from "react";
 import { updateMonthlyItem } from "@/actions/monthly";
 import { Badge } from "@/components/ui/badge";
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
 type Status = "PLANNED" | "DONE" | "SKIPPED";
@@ -19,10 +20,10 @@ const STATUS_LABELS: Record<Status, string> = {
   SKIPPED: "ข้าม",
 };
 
-const NEXT_STATUS: Record<Status, Status> = {
-  PLANNED: "DONE",
-  DONE: "SKIPPED",
-  SKIPPED: "PLANNED",
+const TRANSITION_OPTIONS: Record<Status, Status[]> = {
+  PLANNED: ["DONE", "SKIPPED"],
+  DONE: ["PLANNED", "SKIPPED"],
+  SKIPPED: ["PLANNED", "DONE"],
 };
 
 export function StatusCheckbox({
@@ -36,8 +37,7 @@ export function StatusCheckbox({
 }) {
   const [isPending, startTransition] = useTransition();
 
-  function handleClick() {
-    const nextStatus = NEXT_STATUS[status];
+  function handleChangeStatus(nextStatus: Status) {
     startTransition(async () => {
       await updateMonthlyItem(itemId, { status: nextStatus });
       onUpdate?.();
@@ -45,13 +45,26 @@ export function StatusCheckbox({
   }
 
   return (
-    <button onClick={handleClick} disabled={isPending}>
-      <Badge
-        variant={STATUS_VARIANT[status]}
-        className={cn("cursor-pointer transition-opacity", isPending && "opacity-50")}
-      >
-        {isPending ? "..." : STATUS_LABELS[status]}
-      </Badge>
-    </button>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild disabled={isPending}>
+        <button>
+          <Badge
+            variant={STATUS_VARIANT[status]}
+            className={cn("cursor-pointer transition-opacity", isPending && "opacity-50")}
+          >
+            {isPending ? "..." : STATUS_LABELS[status]}
+          </Badge>
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="center" className="min-w-[120px]">
+        {TRANSITION_OPTIONS[status].map((nextStatus) => (
+          <DropdownMenuItem key={nextStatus} onClick={() => handleChangeStatus(nextStatus)}>
+            <Badge variant={STATUS_VARIANT[nextStatus]} className="w-full justify-center">
+              {STATUS_LABELS[nextStatus]}
+            </Badge>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

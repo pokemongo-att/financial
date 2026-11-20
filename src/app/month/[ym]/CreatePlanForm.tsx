@@ -47,16 +47,16 @@ export function CreatePlanForm({
       <EmptyState
         icon={<CalendarPlus className="h-10 w-10" />}
         title={`ยังไม่มีแผนสำหรับ${formatThaiMonth(month)}`}
-        description="เลือก template เพื่อสร้างรายการของเดือนนี้ในครั้งเดียว"
+        description="เลือกแม่แบบเพื่อเตรียมรายการของเดือนนี้ในครั้งเดียว"
         action={
           templates.length === 0 ? (
             <Link href="/templates" className={buttonVariants({ variant: "outline" })}>
-              สร้าง template ก่อน
+              ไปสร้างแม่แบบรายเดือน
             </Link>
           ) : (
             <div className="flex w-full max-w-sm flex-col gap-2 sm:max-w-none sm:flex-row sm:flex-wrap sm:justify-center">
               {templates.map((t) => (
-                <Button key={t.id} onClick={() => handleCreate(t.id)} disabled={isPending} className="w-full sm:w-auto">
+                <Button key={t.id} onClick={() => handleCreate(t.id)} disabled={isPending} className="h-auto min-h-11 w-full whitespace-normal sm:w-auto">
                   <FileText className="h-4 w-4" />
                   {isPending && pendingId === t.id ? "กำลังสร้าง..." : `สร้างจาก "${t.name}"`}
                 </Button>

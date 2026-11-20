@@ -27,9 +27,9 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "ภาพรวม",
     items: [
-      { href: "/dashboard", label: "Dashboard", short: "Dashboard", icon: LayoutDashboard, primary: true },
-      { href: "/month", label: "แผนรายเดือน", short: "แผนเดือน", icon: CalendarCheck, primary: true },
-      { href: "/templates", label: "Templates", short: "Templates", icon: FileText },
+      { href: "/dashboard", label: "ภาพรวมการเงิน", short: "ภาพรวม", icon: LayoutDashboard, primary: true },
+      { href: "/month", label: "แผนรายเดือน", short: "รายเดือน", icon: CalendarCheck, primary: true },
+      { href: "/templates", label: "แม่แบบรายเดือน", short: "แม่แบบ", icon: FileText },
     ],
   },
   {
@@ -42,7 +42,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "การลงทุน",
     items: [
-      { href: "/portfolio", label: "Portfolio", short: "Portfolio", icon: Briefcase, primary: true },
+      { href: "/portfolio", label: "พอร์ตลงทุน", short: "ลงทุน", icon: Briefcase, primary: true },
       { href: "/portfolio/dividends", label: "ปันผล", short: "ปันผล", icon: TrendingUp },
     ],
   },

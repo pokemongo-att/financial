@@ -14,7 +14,7 @@ export default async function PortfolioPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Portfolio" subtitle="หุ้น กองทุน BTC เงินฝาก" />
+      <PageHeader title="พอร์ตลงทุน" subtitle="หุ้น กองทุน BTC เงินฝาก" />
       <PortfolioTabs
         stocks={stocks}
         funds={funds}

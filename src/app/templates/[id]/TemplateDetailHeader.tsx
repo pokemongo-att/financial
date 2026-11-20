@@ -35,7 +35,7 @@ export function TemplateDetailHeader({
     setSaving(true);
     try {
       await updateTemplate(templateId, { name: name.trim() });
-      toast.success("แก้ไขชื่อ template แล้ว");
+      toast.success("เปลี่ยนชื่อแม่แบบแล้ว");
       setEditing(false);
       router.refresh();
     } catch {
@@ -53,7 +53,7 @@ export function TemplateDetailHeader({
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => e.key === "Escape" && cancel()}
           className="max-w-md flex-1 text-base font-semibold"
-          aria-label="ชื่อ template"
+          aria-label="ชื่อแม่แบบ"
           autoFocus
           disabled={saving}
         />
@@ -68,7 +68,7 @@ export function TemplateDetailHeader({
   }
 
   return (
-    <PageHeader title={templateName} subtitle="แก้ไขรายการ template" backHref="/templates" backLabel="กลับไปหน้า Templates">
+    <PageHeader title={templateName} subtitle="แก้ไขรายการในแม่แบบ" backHref="/templates" backLabel="กลับไปหน้าแม่แบบรายเดือน">
       <Button variant="outline" onClick={() => setEditing(true)}>
         <Pencil className="h-4 w-4" />
         แก้ไขชื่อ

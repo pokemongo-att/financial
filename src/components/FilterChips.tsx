@@ -36,7 +36,7 @@ export function FilterChips<T extends string>({
             aria-pressed={active}
             onClick={() => onChange(opt.value)}
             className={cn(
-              "inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-sm font-medium transition-colors pointer-coarse:h-10 pointer-coarse:px-4",
+              "inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3 text-sm font-medium transition-colors",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-1",
               active
                 ? "border-indigo-600 bg-indigo-600 text-white"
@@ -45,7 +45,7 @@ export function FilterChips<T extends string>({
           >
             {opt.label}
             {opt.count != null && (
-              <span className={cn("text-xs tabular-nums", active ? "text-indigo-100" : "text-slate-400")}>
+              <span className={cn("text-xs tabular-nums", active ? "text-indigo-100" : "text-slate-600")}>
                 {opt.count}
               </span>
             )}

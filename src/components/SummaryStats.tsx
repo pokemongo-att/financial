@@ -132,19 +132,14 @@ export function ChecklistProgress({
     <div className={className}>
       <div className="flex items-baseline justify-between gap-3 text-sm">
         <span className="text-slate-600">
-          เสร็จแล้ว <span className="font-semibold tabular-nums text-slate-900">{done}</span>
-          <span className="tabular-nums text-slate-400"> / {total}</span> รายการ
-          {skipped > 0 && <span className="text-slate-400"> · ข้าม {skipped}</span>}
+          จัดการแล้ว <span className="font-semibold tabular-nums text-slate-900">{settled} จาก {total}</span> รายการ
+          {skipped > 0 && <span> · ข้าม {skipped}</span>}
         </span>
         <span className="text-xs font-medium tabular-nums text-slate-500">{pct}%</span>
       </div>
       <div
         className="mt-2 h-2 overflow-hidden rounded-full bg-slate-100"
-        role="progressbar"
-        aria-valuemin={0}
-        aria-valuemax={total}
-        aria-valuenow={settled}
-        aria-label="ความคืบหน้ารายการของเดือน"
+        aria-hidden="true"
       >
         <div
           className="h-full rounded-full bg-emerald-500 transition-[width] duration-500 ease-out"

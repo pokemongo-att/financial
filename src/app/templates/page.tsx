@@ -8,7 +8,7 @@ export default async function TemplatesPage() {
   const templates = await getTemplates(userId);
   return (
     <div className="space-y-6">
-      <PageHeader title="Templates" subtitle="จัดการ template รายการรายเดือน" />
+      <PageHeader title="แม่แบบรายเดือน" subtitle="ตั้งค่ารายการที่ใช้ซ้ำทุกเดือน" />
       <TemplateList templates={templates} userId={userId} />
     </div>
   );

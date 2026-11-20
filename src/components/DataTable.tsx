@@ -114,15 +114,15 @@ export function DataTable<TData>({
 
   return (
     <Card className="overflow-hidden">
-      <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-3 sm:px-5 lg:flex-row lg:items-center lg:justify-between lg:px-6 lg:py-4">
+      <div className="flex flex-wrap items-end gap-x-4 gap-y-3 border-b border-slate-100 px-4 py-3 sm:px-5 lg:px-6 lg:py-4">
         {(title || toolbar) && (
-          <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-center lg:gap-4">
-            {title && <h2 className="shrink-0 text-sm font-semibold text-slate-900">{title}</h2>}
+          <div className="flex min-w-0 flex-1 basis-80 flex-col gap-2.5">
+            {title && <h2 className="text-base font-semibold text-slate-900">{title}</h2>}
             {toolbar}
           </div>
         )}
-        <div className="flex gap-2 lg:shrink-0">
-          <div className="relative min-w-0 flex-1 lg:w-60 lg:flex-none">
+        <div className="flex min-w-0 flex-1 basis-64 flex-wrap gap-2 lg:ml-auto lg:justify-end">
+          <div className="relative min-w-0 flex-1 basis-28 lg:max-w-64">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <Input
               type="search"
@@ -131,7 +131,7 @@ export function DataTable<TData>({
               placeholder={searchPlaceholder}
               value={globalFilter}
               onChange={(e) => setGlobalFilter(e.target.value)}
-              className="pl-9"
+              className="min-h-11 pl-9"
             />
           </div>
           {renderCard && sortOptions.length > 0 && (
@@ -144,7 +144,7 @@ export function DataTable<TData>({
                 const [id, dir] = v.split(":");
                 setSorting([{ id, desc: dir === "desc" }]);
               }}
-              className="w-[7.5rem] shrink-0 lg:hidden"
+              className="min-h-11 w-auto min-w-0 max-w-full flex-1 basis-32 lg:hidden"
             >
               <option value="">เรียงตามเดิม</option>
               {sortOptions.map((o) => (

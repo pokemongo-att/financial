@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils"
 
 /** 16px text on touch screens keeps iOS from zooming into the field on focus. */
 export const fieldBase =
-  "w-full rounded-lg border border-slate-300 bg-white text-base text-slate-900 placeholder:text-slate-400 pointer-fine:text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:border-transparent disabled:cursor-not-allowed disabled:opacity-50"
+  "w-full rounded-lg border border-slate-300 bg-white text-base text-slate-900 placeholder:text-slate-500 pointer-fine:text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:border-transparent disabled:cursor-not-allowed disabled:opacity-50"
 
 const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
   ({ className, type, ...props }, ref) => {

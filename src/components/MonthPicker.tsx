@@ -36,18 +36,18 @@ export function MonthPicker({
   const href = (ym: string) => (mode === "query" ? `${basePath}?month=${ym}` : `${basePath}/${ym}`);
   const today = thisMonth();
   const stepClass =
-    "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 active:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 pointer-coarse:h-11 pointer-coarse:w-11";
+    "inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 active:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500";
 
   return (
-    <div className={cn("flex w-full items-center gap-2 sm:w-auto", className)}>
+    <div className={cn("flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto", className)}>
       <nav
         aria-label="เลือกเดือน"
-        className="flex flex-1 items-center rounded-xl border border-slate-200 bg-white p-0.5 shadow-sm sm:flex-none"
+        className="flex min-w-0 flex-1 basis-48 items-center rounded-xl border border-slate-200 bg-white p-0.5 sm:flex-none"
       >
         <Link href={href(shift(currentMonth, -1))} className={stepClass} aria-label="เดือนก่อนหน้า" scroll={false}>
           <ChevronLeft className="h-4 w-4" />
         </Link>
-        <span className="min-w-[9.5rem] flex-1 text-center text-sm font-semibold text-slate-900" aria-live="polite">
+        <span className="min-w-0 flex-1 py-1 text-center text-sm font-semibold leading-snug text-slate-900 sm:min-w-32" aria-live="polite">
           {formatThaiMonth(currentMonth)}
         </span>
         <Link href={href(shift(currentMonth, 1))} className={stepClass} aria-label="เดือนถัดไป" scroll={false}>
@@ -57,7 +57,7 @@ export function MonthPicker({
       {currentMonth !== today && (
         <Link
           href={href(today)}
-          className="inline-flex h-10 shrink-0 items-center rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-indigo-700 shadow-sm transition-colors hover:bg-indigo-50 pointer-coarse:h-12"
+          className="inline-flex min-h-11 shrink-0 items-center rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-indigo-700 transition-colors hover:bg-indigo-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
         >
           เดือนนี้
         </Link>

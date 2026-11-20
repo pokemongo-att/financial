@@ -20,25 +20,25 @@ export function PageHeader({
   backLabel?: string;
 }) {
   return (
-    <div className={cn("flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between", className)}>
+    <header className={cn("flex flex-wrap items-center justify-between gap-x-6 gap-y-3", className)}>
       <div className="flex min-w-0 items-start gap-1">
         {backHref && (
           <Link
             href={backHref}
             aria-label={backLabel}
-            className="-ml-2 -mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 pointer-coarse:-mt-2 pointer-coarse:h-11 pointer-coarse:w-11 sm:mt-0 sm:pointer-coarse:-mt-1.5"
+            className="-ml-2 -mt-1 inline-flex size-11 shrink-0 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
           >
             <ArrowLeft className="h-5 w-5" />
           </Link>
         )}
         <div className="min-w-0">
-          <h1 className="text-xl font-semibold tracking-tight text-balance text-slate-900 sm:text-2xl">{title}</h1>
-          {subtitle && <p className="mt-1 text-sm text-slate-500">{subtitle}</p>}
+          <h1 className="wrap-anywhere text-2xl font-semibold tracking-tight text-slate-900 sm:text-[1.75rem]">{title}</h1>
+          {subtitle && <p className="mt-1 wrap-anywhere text-sm leading-relaxed text-slate-600">{subtitle}</p>}
         </div>
       </div>
       {children && (
-        <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:flex-nowrap">{children}</div>
+        <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">{children}</div>
       )}
-    </div>
+    </header>
   );
 }

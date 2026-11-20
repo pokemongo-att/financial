@@ -81,7 +81,7 @@ export default async function DividendDashboardPage({
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Dividend Dashboard" subtitle="สรุปปันผลจากหุ้นและกองทุน" />
+      <PageHeader title="เงินปันผล" subtitle="สรุปปันผลจากหุ้นและกองทุน" />
       <DividendDashboardClient summary={summary} currentRange={range} />
     </div>
   );

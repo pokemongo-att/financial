@@ -21,7 +21,7 @@ const buttonVariants = cva(
       // Touch screens (pointer: coarse) get ≥44px targets; mouse keeps the denser sizes.
       size: {
         default: "h-9 px-4 py-2 pointer-coarse:h-11 pointer-coarse:px-5",
-        sm: "h-8 px-3 text-xs pointer-coarse:h-10 pointer-coarse:px-4 pointer-coarse:text-sm",
+        sm: "h-8 px-3 text-xs pointer-coarse:h-11 pointer-coarse:px-4 pointer-coarse:text-sm",
         lg: "h-11 px-6",
         icon: "h-9 w-9 pointer-coarse:h-11 pointer-coarse:w-11",
       },

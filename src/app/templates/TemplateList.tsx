@@ -53,17 +53,17 @@ export function TemplateList({
       try {
         if (copyFromId) {
           await copyTemplate(userId, copyFromId, name.trim());
-          toast.success("Copy template แล้ว");
+          toast.success("คัดลอกแม่แบบแล้ว");
         } else {
           await createTemplate(userId, { name: name.trim() });
-          toast.success("สร้าง template แล้ว");
+          toast.success("สร้างแม่แบบแล้ว");
         }
         setName("");
         setCopyFromId("");
         setShowCreate(false);
         router.refresh();
       } catch {
-        toast.error("สร้าง template ไม่สำเร็จ ลองอีกครั้ง");
+        toast.error("สร้างแม่แบบไม่สำเร็จ ลองอีกครั้ง");
       }
     });
   }
@@ -74,7 +74,7 @@ export function TemplateList({
     setSavingRename(true);
     try {
       await updateTemplate(renameItem.id, { name: renameName.trim() });
-      toast.success("แก้ไขชื่อ template แล้ว");
+      toast.success("เปลี่ยนชื่อแม่แบบแล้ว");
       setRenameItem(null);
       setRenameName("");
       router.refresh();
@@ -90,7 +90,7 @@ export function TemplateList({
     setDeleting(true);
     try {
       await deleteTemplate(deleteId);
-      toast.success("ลบ template แล้ว");
+      toast.success("ลบแม่แบบแล้ว");
       router.refresh();
     } catch {
       toast.error("ลบไม่สำเร็จ ลองอีกครั้ง");
@@ -105,20 +105,20 @@ export function TemplateList({
       <div className="flex justify-end">
         <Button onClick={() => setShowCreate(!showCreate)} variant={showCreate ? "outline" : "default"} aria-expanded={showCreate}>
           {showCreate ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-          {showCreate ? "ปิด" : "สร้าง Template ใหม่"}
+          {showCreate ? "ปิด" : "สร้างแม่แบบใหม่"}
         </Button>
       </div>
 
       {showCreate && (
         <Card className="p-4 sm:p-5">
           <form onSubmit={handleCreate} className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
-            <Field label="ชื่อ template">
+            <Field label="ชื่อแม่แบบ">
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="เช่น เดือนปกติ" autoFocus />
             </Field>
             {templates.length > 0 ? (
               <Field label="เริ่มจาก">
                 <Select value={copyFromId} onChange={(e) => setCopyFromId(e.target.value)}>
-                  <option value="">template ว่าง</option>
+                  <option value="">แม่แบบว่าง</option>
                   {templates.map((t) => (
                     <option key={t.id} value={t.id}>
                       Copy จาก: {t.name}
@@ -167,7 +167,7 @@ export function TemplateList({
                         setRenameName(t.name);
                       },
                     },
-                    { label: "ลบ template", icon: Trash2, onSelect: () => setDeleteId(t.id), destructive: true },
+                    { label: "ลบแม่แบบ", icon: Trash2, onSelect: () => setDeleteId(t.id), destructive: true },
                   ]}
                 />
               </li>
@@ -178,8 +178,8 @@ export function TemplateList({
         <Card>
           <EmptyState
             icon={<FileText className="h-8 w-8" />}
-            title="ยังไม่มี template"
-            description="สร้าง template เพื่อใช้เป็นแม่แบบรายเดือน"
+            title="ยังไม่มีแม่แบบ"
+            description="สร้างชุดรายการที่ใช้ซ้ำทุกเดือนได้จากหน้านี้"
           />
         </Card>
       )}
@@ -196,16 +196,16 @@ export function TemplateList({
       >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>แก้ไขชื่อ Template</DialogTitle>
+            <DialogTitle>เปลี่ยนชื่อแม่แบบ</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleRename} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="renameName">ชื่อ Template</Label>
+              <Label htmlFor="renameName">ชื่อแม่แบบ</Label>
               <Input
                 id="renameName"
                 value={renameName}
                 onChange={(e) => setRenameName(e.target.value)}
-                placeholder="ชื่อ template..."
+                placeholder="ชื่อแม่แบบ"
               />
             </div>
             <DialogFooter>
@@ -225,8 +225,8 @@ export function TemplateList({
         open={deleteId !== null}
         onClose={() => setDeleteId(null)}
         onConfirm={handleDelete}
-        title="ลบ Template"
-        description="คุณต้องการลบ template นี้หรือไม่? รายการทั้งหมดใน template จะถูกลบด้วย"
+        title="ลบแม่แบบ"
+        description="รายการทั้งหมดในแม่แบบนี้จะถูกลบด้วย"
         confirmLabel="ลบ"
         loading={deleting}
       />

@@ -31,7 +31,7 @@ export function MonthMaintenanceActions({ userId }: { userId: string }) {
     <>
       <RowActions
         label="ตัวเลือกของหน้านี้"
-        className="h-10 w-10 border border-slate-200 bg-white text-slate-500 shadow-sm pointer-coarse:h-12 pointer-coarse:w-12"
+        className="size-12 self-start border border-slate-200 bg-white text-slate-600 pointer-coarse:size-12"
         actions={[
           {
             label: "ล้างข้อมูลทดสอบรายเดือน",

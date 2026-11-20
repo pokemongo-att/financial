@@ -77,6 +77,12 @@
     scrollbar-color: var(--color-slate-300) transparent;
   }
 
+  @media (width < 48rem) {
+    html {
+      scroll-padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+    }
+  }
+
   body {
     min-height: 100dvh;
   }

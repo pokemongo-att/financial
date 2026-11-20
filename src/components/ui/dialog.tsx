@@ -44,15 +44,15 @@ const DialogContent = React.forwardRef<
       className={cn(
         "fixed z-50 grid w-full gap-4 overflow-y-auto overscroll-contain bg-white text-slate-900 shadow-xl focus:outline-none",
         // phone sheet
-        "inset-x-0 bottom-0 max-h-[92dvh] rounded-t-2xl border-t border-slate-200 px-5 pt-6 pb-[max(1.25rem,env(safe-area-inset-bottom))] data-[state=open]:animate-sheet-in",
+        "inset-x-0 bottom-0 max-h-[min(92dvh,calc(100dvh-env(safe-area-inset-top)))] rounded-t-2xl border-t border-slate-200 pt-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] data-[state=open]:animate-sheet-in",
         // tablet / desktop dialog
-        "sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[85dvh] sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl sm:border sm:p-6 sm:data-[state=open]:animate-dialog-in",
+        "sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[85dvh] sm:w-[calc(100%-2rem)] sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl sm:border sm:p-6 sm:data-[state=open]:animate-dialog-in",
         className
       )}
       {...props}
     >
       {children}
-      <DialogPrimitive.Close className="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:pointer-events-none pointer-coarse:h-11 pointer-coarse:w-11">
+      <DialogPrimitive.Close className="absolute top-2 right-[max(0.5rem,env(safe-area-inset-right))] inline-flex size-11 items-center justify-center rounded-lg text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 disabled:pointer-events-none sm:top-3 sm:right-3">
         <X className="h-4 w-4" />
         <span className="sr-only">ปิด</span>
       </DialogPrimitive.Close>
@@ -78,7 +78,7 @@ const DialogFooter = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end [&>button]:w-full sm:[&>button]:w-auto",
+      "flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end [&>button]:min-h-11 [&>button]:w-full sm:[&>button]:w-auto",
       className
     )}
     {...props}

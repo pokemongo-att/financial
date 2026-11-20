@@ -3,19 +3,20 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Plus, ChevronRight, FileText, Pencil, Trash2, X } from "lucide-react";
+import { toast } from "sonner";
 import { createTemplate, deleteTemplate, updateTemplate, copyTemplate } from "@/actions/templates";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { EmptyState } from "@/components/EmptyState";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-import { DropdownMenu, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuContent } from "@/components/ui/dropdown-menu";
-import { Plus, ChevronRight, FileText, MoreHorizontal, Pencil, Trash2, Copy } from "lucide-react";
-import { toast } from "sonner";
+import { RowActions } from "@/components/RowActions";
+import { Field } from "@/components/Field";
 
 type Template = {
   id: string;
@@ -62,7 +63,7 @@ export function TemplateList({
         setShowCreate(false);
         router.refresh();
       } catch {
-        toast.error("เกิดข้อผิดพลาด");
+        toast.error("สร้าง template ไม่สำเร็จ ลองอีกครั้ง");
       }
     });
   }
@@ -78,7 +79,7 @@ export function TemplateList({
       setRenameName("");
       router.refresh();
     } catch {
-      toast.error("เกิดข้อผิดพลาด");
+      toast.error("แก้ไขชื่อไม่สำเร็จ ลองอีกครั้ง");
     } finally {
       setSavingRename(false);
     }
@@ -92,7 +93,7 @@ export function TemplateList({
       toast.success("ลบ template แล้ว");
       router.refresh();
     } catch {
-      toast.error("เกิดข้อผิดพลาด");
+      toast.error("ลบไม่สำเร็จ ลองอีกครั้ง");
     } finally {
       setDeleting(false);
       setDeleteId(null);
@@ -102,94 +103,86 @@ export function TemplateList({
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <Button onClick={() => setShowCreate(!showCreate)}>
-          <Plus className="w-4 h-4" />
-          สร้าง Template ใหม่
+        <Button onClick={() => setShowCreate(!showCreate)} variant={showCreate ? "outline" : "default"} aria-expanded={showCreate}>
+          {showCreate ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+          {showCreate ? "ปิด" : "สร้าง Template ใหม่"}
         </Button>
       </div>
 
       {showCreate && (
-        <Card className="p-4">
-          <form onSubmit={handleCreate} className="space-y-3">
-            <div className="flex gap-3">
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="ชื่อ template..."
-                className="flex-1"
-              />
-              <Button type="submit" disabled={isPending}>
-                {isPending ? "กำลังสร้าง..." : copyFromId ? "Copy & สร้าง" : "สร้าง"}
-              </Button>
-            </div>
-            {templates.length > 0 && (
-              <div className="flex items-center gap-2">
-                <Copy className="w-4 h-4 text-slate-400" />
-                <Select
-                  value={copyFromId}
-                  onChange={(e) => setCopyFromId(e.target.value)}
-                >
-                  <option value="">— สร้างว่าง (ไม่ copy) —</option>
+        <Card className="p-4 sm:p-5">
+          <form onSubmit={handleCreate} className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+            <Field label="ชื่อ template">
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="เช่น เดือนปกติ" autoFocus />
+            </Field>
+            {templates.length > 0 ? (
+              <Field label="เริ่มจาก">
+                <Select value={copyFromId} onChange={(e) => setCopyFromId(e.target.value)}>
+                  <option value="">template ว่าง</option>
                   {templates.map((t) => (
-                    <option key={t.id} value={t.id}>Copy จาก: {t.name}</option>
+                    <option key={t.id} value={t.id}>
+                      Copy จาก: {t.name}
+                    </option>
                   ))}
                 </Select>
-              </div>
+              </Field>
+            ) : (
+              <span className="hidden sm:block" />
             )}
+            <Button type="submit" disabled={isPending || !name.trim()}>
+              {isPending ? "กำลังสร้าง..." : copyFromId ? "Copy & สร้าง" : "สร้าง"}
+            </Button>
           </form>
         </Card>
       )}
 
-      <div className="space-y-2">
-        {templates.map((t) => (
-          <Card key={t.id} className="p-4 hover:border-indigo-300 transition-colors">
-            <div className="flex items-center justify-between">
-              <Link href={`/templates/${t.id}`} className="flex-1 flex items-center gap-2.5 cursor-pointer">
-                <FileText className="w-4 h-4 text-slate-400" />
-                <span className="font-medium text-slate-900">{t.name}</span>
-                {t.isDefault && <Badge variant="info">Default</Badge>}
-              </Link>
-              <div className="flex items-center gap-1">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="h-8 w-8 p-0">
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onClick={() => {
+      {templates.length > 0 ? (
+        <Card className="overflow-hidden">
+          <ul className="divide-y divide-slate-100">
+            {templates.map((t) => (
+              <li key={t.id} className="flex items-center gap-1 pr-2 sm:pr-3">
+                <Link
+                  href={`/templates/${t.id}`}
+                  className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3.5 transition-colors hover:bg-slate-50/60 active:bg-slate-50"
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500">
+                    <FileText className="h-4 w-4" />
+                  </span>
+                  <span className="truncate font-medium text-slate-900">{t.name}</span>
+                  {t.isDefault && (
+                    <Badge variant="info" className="shrink-0">
+                      Default
+                    </Badge>
+                  )}
+                  <ChevronRight className="ml-auto h-4 w-4 shrink-0 text-slate-300" />
+                </Link>
+                <RowActions
+                  label={`ตัวเลือกของ ${t.name}`}
+                  actions={[
+                    {
+                      label: "แก้ไขชื่อ",
+                      icon: Pencil,
+                      onSelect: () => {
                         setRenameItem(t);
                         setRenameName(t.name);
-                      }}
-                    >
-                      <Pencil className="mr-2 h-4 w-4" /> แก้ไขชื่อ
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="text-red-600"
-                      onClick={() => setDeleteId(t.id)}
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" /> ลบ
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <Link href={`/templates/${t.id}`}>
-                  <ChevronRight className="w-4 h-4 text-slate-300" />
-                </Link>
-              </div>
-            </div>
-          </Card>
-        ))}
-        {templates.length === 0 && (
-          <Card>
-            <EmptyState
-              icon={<FileText className="w-8 h-8" />}
-              title="ยังไม่มี template"
-              description="สร้าง template เพื่อใช้เป็นแม่แบบรายเดือน"
-            />
-          </Card>
-        )}
-      </div>
+                      },
+                    },
+                    { label: "ลบ template", icon: Trash2, onSelect: () => setDeleteId(t.id), destructive: true },
+                  ]}
+                />
+              </li>
+            ))}
+          </ul>
+        </Card>
+      ) : (
+        <Card>
+          <EmptyState
+            icon={<FileText className="h-8 w-8" />}
+            title="ยังไม่มี template"
+            description="สร้าง template เพื่อใช้เป็นแม่แบบรายเดือน"
+          />
+        </Card>
+      )}
 
       {/* Rename Dialog */}
       <Dialog
@@ -201,7 +194,7 @@ export function TemplateList({
           }
         }}
       >
-        <DialogContent className="max-w-md">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>แก้ไขชื่อ Template</DialogTitle>
           </DialogHeader>

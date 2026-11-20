@@ -1,7 +1,7 @@
 import { getAssetDetail } from "@/actions/assets";
 import { notFound } from "next/navigation";
 import { formatTHB } from "@/lib/money";
-import { Card, CardTitle, CardValue } from "@/components/ui/card";
+import { SummaryStats } from "@/components/SummaryStats";
 import { AssetTransactionsList } from "./AssetTransactionsList";
 import { AssetDetailHeader } from "./AssetDetailHeader";
 
@@ -19,7 +19,7 @@ export default async function AssetDetailPage({
   const b = isBank ? (asset as any).bankBalance : null;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 sm:space-y-6">
       <AssetDetailHeader
         assetId={id}
         symbol={asset.symbol}
@@ -28,45 +28,28 @@ export default async function AssetDetailPage({
       />
 
       {isBank ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <Card className="p-5">
-            <CardTitle>ยอดคงเหลือ</CardTitle>
-            <CardValue className="text-indigo-600">{formatTHB(b?.currentBalanceCents ?? 0)}</CardValue>
-          </Card>
-          <Card className="p-5">
-            <CardTitle>ฝากรวม</CardTitle>
-            <CardValue className="text-emerald-600">{formatTHB(b?.totalDepositsCents ?? 0)}</CardValue>
-          </Card>
-          <Card className="p-5">
-            <CardTitle>ถอนรวม</CardTitle>
-            <CardValue className="text-red-600">{formatTHB(b?.totalWithdrawalsCents ?? 0)}</CardValue>
-          </Card>
-        </div>
+        <SummaryStats
+          items={[
+            { label: "ฝากรวม", value: formatTHB(b?.totalDepositsCents ?? 0), tone: "positive" },
+            { label: "ถอนรวม", value: formatTHB(b?.totalWithdrawalsCents ?? 0), tone: "negative" },
+          ]}
+          highlight={{ label: "ยอดคงเหลือ", value: formatTHB(b?.currentBalanceCents ?? 0), tone: "primary" }}
+        />
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          <Card className="p-5">
-            <CardTitle>จำนวน</CardTitle>
-            <CardValue>{h?.totalQuantity ?? 0}</CardValue>
-          </Card>
-          <Card className="p-5">
-            <CardTitle>ต้นทุนเฉลี่ย</CardTitle>
-            <CardValue>{formatTHB(h?.avgCostCents ?? 0)}</CardValue>
-          </Card>
-          <Card className="p-5">
-            <CardTitle>ต้นทุนรวม</CardTitle>
-            <CardValue>{formatTHB(h?.totalCostCents ?? 0)}</CardValue>
-          </Card>
-          <Card className="p-5">
-            <CardTitle>Realized P/L</CardTitle>
-            <CardValue className={(h?.realizedPnLCents ?? 0) >= 0 ? "text-emerald-600" : "text-red-600"}>
-              {formatTHB(h?.realizedPnLCents ?? 0)}
-            </CardValue>
-          </Card>
-          <Card className="p-5">
-            <CardTitle>ปันผลสะสม</CardTitle>
-            <CardValue className="text-indigo-600">{formatTHB(h?.dividendsTotalCents ?? 0)}</CardValue>
-          </Card>
-        </div>
+        <SummaryStats
+          gridClassName="sm:grid-cols-3 xl:grid-cols-5"
+          items={[
+            { label: "จำนวน", value: `${(h?.totalQuantity ?? 0).toLocaleString("th-TH")} หน่วย` },
+            { label: "ต้นทุนเฉลี่ย", value: formatTHB(h?.avgCostCents ?? 0) },
+            {
+              label: "Realized P/L",
+              value: formatTHB(h?.realizedPnLCents ?? 0),
+              tone: (h?.realizedPnLCents ?? 0) >= 0 ? "positive" : "negative",
+            },
+            { label: "ปันผลสะสม", value: formatTHB(h?.dividendsTotalCents ?? 0), tone: "primary" },
+          ]}
+          highlight={{ label: "ต้นทุนรวม", value: formatTHB(h?.totalCostCents ?? 0) }}
+        />
       )}
 
       <AssetTransactionsList

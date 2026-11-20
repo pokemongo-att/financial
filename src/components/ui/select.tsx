@@ -1,17 +1,16 @@
 import { cn } from "@/lib/utils";
 import { forwardRef } from "react";
+import { fieldBase } from "./input";
 
 export interface SelectProps
   extends React.SelectHTMLAttributes<HTMLSelectElement> {}
 
+/** Native select on purpose: phones and tablets open their own picker. */
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
   ({ className, children, ...props }, ref) => {
     return (
       <select
-        className={cn(
-          "flex h-9 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:cursor-not-allowed disabled:opacity-50",
-          className
-        )}
+        className={cn(fieldBase, "flex h-10 px-3 py-2 pointer-coarse:h-11", className)}
         ref={ref}
         {...props}
       >

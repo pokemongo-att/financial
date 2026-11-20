@@ -1,19 +1,22 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { formatTHB } from "@/lib/money";
 import Link from "next/link";
-import { Card, CardTitle, CardValue } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { ChevronRight, Coins } from "lucide-react";
+import { formatTHB } from "@/lib/money";
+import type { DividendSummary } from "@/lib/calc/dividends";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/EmptyState";
-import { ChevronRight, Coins } from "lucide-react";
-import type { DividendSummary } from "@/lib/calc/dividends";
+import { FilterChips } from "@/components/FilterChips";
+import { SummaryStats } from "@/components/SummaryStats";
 
-const RANGES = [
-  { key: "month", label: "เดือนนี้" },
-  { key: "year", label: "ปีนี้" },
-  { key: "all", label: "ทั้งหมด" },
+type Range = "month" | "year" | "all";
+
+const RANGES: { value: Range; label: string }[] = [
+  { value: "month", label: "เดือนนี้" },
+  { value: "year", label: "ปีนี้" },
+  { value: "all", label: "ทั้งหมด" },
 ];
 
 export function DividendDashboardClient({
@@ -24,81 +27,112 @@ export function DividendDashboardClient({
   currentRange: string;
 }) {
   const router = useRouter();
-
-  function setRange(range: string) {
-    router.push(`/portfolio/dividends?range=${range}`);
-  }
+  const perAsset = [...summary.perAsset].sort((a, b) => b.dividendTotalCents - a.dividendTotalCents);
 
   return (
-    <div className="space-y-6">
-      <div className="flex gap-1.5">
-        {RANGES.map((r) => (
-          <Button key={r.key} variant={currentRange === r.key ? "default" : "secondary"} size="sm" onClick={() => setRange(r.key)}>
-            {r.label}
-          </Button>
-        ))}
-      </div>
+    <div className="space-y-5 sm:space-y-6">
+      <FilterChips
+        label="ช่วงเวลา"
+        value={(currentRange as Range) ?? "all"}
+        onChange={(r) => router.push(`/portfolio/dividends?range=${r}`, { scroll: false })}
+        options={RANGES}
+      />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="p-5">
-          <CardTitle>ปันผลรวมทั้งหมด</CardTitle>
-          <CardValue className="text-indigo-600">{formatTHB(summary.totals.allCents)}</CardValue>
-        </Card>
-        <Card className="p-5">
-          <CardTitle>ปันผลหุ้น</CardTitle>
-          <CardValue className="text-emerald-600">{formatTHB(summary.totals.stockCents)}</CardValue>
-        </Card>
-        <Card className="p-5">
-          <CardTitle>ปันผลกองทุน</CardTitle>
-          <CardValue className="text-blue-600">{formatTHB(summary.totals.fundCents)}</CardValue>
-        </Card>
-      </div>
+      <SummaryStats
+        items={[
+          { label: "ปันผลหุ้น", value: formatTHB(summary.totals.stockCents), tone: "positive" },
+          { label: "ปันผลกองทุน", value: formatTHB(summary.totals.fundCents), tone: "saving" },
+        ]}
+        highlight={{ label: "ปันผลรวมทั้งหมด", value: formatTHB(summary.totals.allCents), tone: "primary" }}
+      />
 
-      <Card className="overflow-x-auto">
-        <div className="px-6 py-4 border-b border-slate-100">
-          <h2 className="text-sm font-medium text-slate-900">ปันผลรายตัว</h2>
+      <Card className="overflow-hidden">
+        <div className="border-b border-slate-100 px-4 py-3 sm:px-6 sm:py-4">
+          <h2 className="text-sm font-semibold text-slate-900">ปันผลรายตัว</h2>
         </div>
-        {summary.perAsset.length === 0 ? (
-          <EmptyState icon={<Coins className="w-8 h-8" />} title="ไม่มีข้อมูลปันผล" description="ปันผลจะแสดงเมื่อมีรายการ DIVIDEND ในพอร์ต" />
+        {perAsset.length === 0 ? (
+          <EmptyState
+            icon={<Coins className="h-8 w-8" />}
+            title="ไม่มีข้อมูลปันผล"
+            description="ปันผลจะแสดงเมื่อมีรายการ DIVIDEND ในพอร์ต"
+          />
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-100">
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">Symbol</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">ชื่อ</th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase">ประเภท</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">จำนวนครั้ง</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase">ปันผลรวม</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase">ครั้งล่าสุด</th>
-                <th className="px-6 py-3 text-center text-xs font-medium text-slate-500 uppercase"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {summary.perAsset
-                .sort((a, b) => b.dividendTotalCents - a.dividendTotalCents)
-                .map((asset) => (
-                  <tr key={asset.assetAccountId} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="px-6 py-3 font-semibold text-slate-900">{asset.code}</td>
-                    <td className="px-6 py-3 text-slate-500">{asset.name ?? "—"}</td>
-                    <td className="px-6 py-3 text-center">
-                      <Badge variant={asset.type === "STOCK" ? "success" : "info"}>
-                        {asset.type === "STOCK" ? "หุ้น" : "กองทุน"}
-                      </Badge>
-                    </td>
-                    <td className="px-6 py-3 text-right tabular-nums text-slate-900">{asset.dividendCount}</td>
-                    <td className="px-6 py-3 text-right font-medium tabular-nums text-indigo-600">
-                      {formatTHB(asset.dividendTotalCents)}
-                    </td>
-                    <td className="px-6 py-3 text-slate-500">{asset.lastDividendAt ?? "—"}</td>
-                    <td className="px-6 py-3 text-center">
-                      <Link href={`/portfolio/${asset.assetAccountId}`} className="text-indigo-600 hover:underline text-xs inline-flex items-center gap-1">
-                        ดู <ChevronRight className="w-3 h-3" />
-                      </Link>
-                    </td>
+          <>
+            {/* Phone + tablet */}
+            <ul className="divide-y divide-slate-100 lg:hidden">
+              {perAsset.map((asset) => (
+                <li key={asset.assetAccountId}>
+                  <Link
+                    href={`/portfolio/${asset.assetAccountId}`}
+                    className="flex items-center gap-3 px-4 py-3.5 transition-colors active:bg-slate-50 sm:px-5"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <p className="flex min-w-0 items-center gap-2">
+                          <span className="truncate font-semibold text-slate-900">{asset.code}</span>
+                          <Badge variant={asset.type === "STOCK" ? "success" : "info"} className="shrink-0">
+                            {asset.type === "STOCK" ? "หุ้น" : "กองทุน"}
+                          </Badge>
+                        </p>
+                        <p className="shrink-0 font-semibold tabular-nums text-indigo-600">
+                          {formatTHB(asset.dividendTotalCents)}
+                        </p>
+                      </div>
+                      <p className="mt-1 truncate text-xs text-slate-500">
+                        {asset.name && <>{asset.name} · </>}
+                        <span className="tabular-nums">{asset.dividendCount} ครั้ง</span>
+                        {asset.lastDividendAt && <> · ล่าสุด <span className="tabular-nums">{asset.lastDividendAt}</span></>}
+                      </p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 shrink-0 text-slate-300" />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+
+            {/* Desktop */}
+            <div className="hidden overflow-x-auto lg:block">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100 text-xs font-medium text-slate-500">
+                    <th scope="col" className="px-4 py-3 text-left xl:px-6">Symbol</th>
+                    <th scope="col" className="px-4 py-3 text-left xl:px-6">ชื่อ</th>
+                    <th scope="col" className="px-4 py-3 text-center xl:px-6">ประเภท</th>
+                    <th scope="col" className="px-4 py-3 text-right xl:px-6">จำนวนครั้ง</th>
+                    <th scope="col" className="px-4 py-3 text-right xl:px-6">ปันผลรวม</th>
+                    <th scope="col" className="px-4 py-3 text-left xl:px-6">ครั้งล่าสุด</th>
+                    <th scope="col" className="w-[1%] px-4 py-3 xl:px-6"><span className="sr-only">ดูรายละเอียด</span></th>
                   </tr>
-                ))}
-            </tbody>
-          </table>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {perAsset.map((asset) => (
+                    <tr key={asset.assetAccountId} className="transition-colors hover:bg-slate-50/60">
+                      <td className="px-4 py-3 font-semibold text-slate-900 xl:px-6">{asset.code}</td>
+                      <td className="px-4 py-3 text-slate-500 xl:px-6">{asset.name ?? "—"}</td>
+                      <td className="px-4 py-3 text-center xl:px-6">
+                        <Badge variant={asset.type === "STOCK" ? "success" : "info"}>
+                          {asset.type === "STOCK" ? "หุ้น" : "กองทุน"}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums text-slate-900 xl:px-6">{asset.dividendCount}</td>
+                      <td className="px-4 py-3 text-right font-medium tabular-nums text-indigo-600 xl:px-6">
+                        {formatTHB(asset.dividendTotalCents)}
+                      </td>
+                      <td className="px-4 py-3 tabular-nums text-slate-500 xl:px-6">{asset.lastDividendAt ?? "—"}</td>
+                      <td className="px-4 py-3 text-right xl:px-6">
+                        <Link
+                          href={`/portfolio/${asset.assetAccountId}`}
+                          className="inline-flex items-center gap-1 whitespace-nowrap rounded-md px-2 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-50"
+                        >
+                          ดู <ChevronRight className="h-3 w-3" />
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </Card>
     </div>

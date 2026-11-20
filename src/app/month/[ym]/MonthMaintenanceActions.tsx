@@ -2,12 +2,13 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { clearMonthlyTestData } from "@/actions/monthly";
-import { Button } from "@/components/ui/button";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
+import { toast } from "sonner";
+import { clearMonthlyTestData } from "@/actions/monthly";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { RowActions } from "@/components/RowActions";
 
+/** Rare, destructive maintenance lives behind the page's "⋯" menu. */
 export function MonthMaintenanceActions({ userId }: { userId: string }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -21,23 +22,25 @@ export function MonthMaintenanceActions({ userId }: { userId: string }) {
         setOpenConfirm(false);
         router.refresh();
       } catch {
-        toast.error("เกิดข้อผิดพลาดในการล้างข้อมูลรายเดือน");
+        toast.error("ล้างข้อมูลรายเดือนไม่สำเร็จ ลองอีกครั้ง");
       }
     });
   }
 
   return (
     <>
-      <Button
-        type="button"
-        variant="outline"
-        className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
-        onClick={() => setOpenConfirm(true)}
-        disabled={isPending}
-      >
-        <Trash2 className="w-4 h-4" />
-        ล้างข้อมูลทดสอบรายเดือน
-      </Button>
+      <RowActions
+        label="ตัวเลือกของหน้านี้"
+        className="h-10 w-10 border border-slate-200 bg-white text-slate-500 shadow-sm pointer-coarse:h-12 pointer-coarse:w-12"
+        actions={[
+          {
+            label: "ล้างข้อมูลทดสอบรายเดือน",
+            icon: Trash2,
+            onSelect: () => setOpenConfirm(true),
+            destructive: true,
+          },
+        ]}
+      />
 
       <ConfirmDialog
         open={openConfirm}

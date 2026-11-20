@@ -2,20 +2,21 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Plus, Users, Pencil, Trash2, X } from "lucide-react";
+import { toast } from "sonner";
 import { createFamilyMember, createFamilyTransaction, updateFamilyMember, deleteFamilyMember } from "@/actions/family";
 import { formatTHB, toCents } from "@/lib/money";
-import { Card, CardTitle, CardValue } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
-import { EmptyState } from "@/components/EmptyState";
-import { Plus, Users, Pencil, Trash2, Wallet } from "lucide-react";
-import { toast } from "sonner";
-import { MoneyInput } from "@/components/MoneyInput";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { EmptyState } from "@/components/EmptyState";
+import { MoneyInput } from "@/components/MoneyInput";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { Badge } from "@/components/ui/badge";
+import { RowActions } from "@/components/RowActions";
+import { Field } from "@/components/Field";
+import { SegmentedControl } from "@/components/SegmentedControl";
 
 type FamilyTx = {
   id: string;
@@ -73,7 +74,7 @@ export function FamilyList({
         toast.success("เพิ่มสมาชิกแล้ว");
         router.refresh();
       } catch {
-        toast.error("เกิดข้อผิดพลาด");
+        toast.error("เพิ่มสมาชิกไม่สำเร็จ ลองอีกครั้ง");
       }
     });
   }
@@ -92,7 +93,7 @@ export function FamilyList({
       setEditOpeningBalance("");
       router.refresh();
     } catch {
-      toast.error("เกิดข้อผิดพลาดในการอัปเดต");
+      toast.error("อัปเดตไม่สำเร็จ ลองอีกครั้ง");
     } finally {
       setSavingEdit(false);
     }
@@ -112,10 +113,10 @@ export function FamilyList({
         setTxAmount("");
         setTxNote("");
         setAddingTxFor(null);
-        toast.success("เพิ่มรายการแล้ว");
+        toast.success("บันทึกรายการแล้ว");
         router.refresh();
       } catch {
-        toast.error("เกิดข้อผิดพลาด");
+        toast.error("บันทึกรายการไม่สำเร็จ ลองอีกครั้ง");
       }
     });
   }
@@ -128,7 +129,7 @@ export function FamilyList({
       toast.success("ลบสมาชิกแล้ว");
       router.refresh();
     } catch {
-      toast.error("เกิดข้อผิดพลาดในการลบ");
+      toast.error("ลบไม่สำเร็จ ลองอีกครั้ง");
     } finally {
       setDeleting(false);
       setDeleteId(null);
@@ -139,86 +140,98 @@ export function FamilyList({
   const children = members.filter((m) => m.type === "CHILD");
   const grandTotal = members.reduce((s, m) => s + m.totalCents, 0);
 
-  return (
-    <div className="space-y-6">
-      <Card className="relative overflow-hidden p-5">
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-500 to-pink-500" />
-        <div className="flex items-center gap-3">
-          <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
-            <Wallet className="w-5 h-5 text-indigo-600" />
-          </div>
-          <div>
-            <CardTitle className="text-sm text-slate-500">ยอดรวมทั้งหมด</CardTitle>
-            <CardValue className="text-indigo-600">{formatTHB(grandTotal)}</CardValue>
-          </div>
-        </div>
-      </Card>
+  const cardProps = (m: Member) => ({
+    member: m,
+    adding: addingTxFor === m.id,
+    setAddingTxFor,
+    txAmount,
+    setTxAmount,
+    txDate,
+    setTxDate,
+    txNote,
+    setTxNote,
+    isPending,
+    onAddTx: handleAddTx,
+    onEditOpening: () => {
+      setEditMember(m);
+      setEditOpeningBalance((m.openingBalanceCents / 100).toFixed(2));
+    },
+    onDelete: () => setDeleteId(m.id),
+  });
 
-      <div className="flex justify-end">
-        <Button onClick={() => setShowAddMember(!showAddMember)}>
-          <Plus className="w-4 h-4" />
-          เพิ่มสมาชิก
+  return (
+    <div className="space-y-5 sm:space-y-6">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-slate-500">
+          ยอดรวมทั้งหมด{" "}
+          <span className="text-base font-semibold tabular-nums text-indigo-600">{formatTHB(grandTotal)}</span>
+        </p>
+        <Button
+          onClick={() => setShowAddMember(!showAddMember)}
+          variant={showAddMember ? "outline" : "default"}
+          aria-expanded={showAddMember}
+        >
+          {showAddMember ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+          {showAddMember ? "ปิด" : "เพิ่มสมาชิก"}
         </Button>
       </div>
 
       {showAddMember && (
-        <Card className="p-4">
-          <form onSubmit={handleAddMember} className="flex flex-col sm:flex-row gap-3">
-            <Input value={memberName} onChange={(e) => setMemberName(e.target.value)} placeholder="ชื่อ" className="flex-1" />
-            <MoneyInput
-              value={memberOpeningBalance}
-              onChange={setMemberOpeningBalance}
-              placeholder="ยอดตั้งต้น"
-              className="w-full sm:w-40"
-            />
-            <Select value={memberType} onChange={(e) => setMemberType(e.target.value as "PARENT" | "CHILD")} className="w-full sm:w-32">
-              <option value="PARENT">พ่อแม่</option>
-              <option value="CHILD">หลาน</option>
-            </Select>
-            <Button type="submit" disabled={isPending}>สร้าง</Button>
+        <Card className="p-4 sm:p-5">
+          <form
+            onSubmit={handleAddMember}
+            className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_11rem_12rem_auto] lg:items-end"
+          >
+            <Field label="ชื่อ">
+              <Input value={memberName} onChange={(e) => setMemberName(e.target.value)} placeholder="เช่น แม่" autoFocus />
+            </Field>
+            <div className="space-y-1.5">
+              <span className="block text-xs font-medium text-slate-600">ความสัมพันธ์</span>
+              <SegmentedControl
+                label="ความสัมพันธ์"
+                value={memberType}
+                onChange={setMemberType}
+                options={[
+                  { value: "PARENT", label: "พ่อแม่" },
+                  { value: "CHILD", label: "หลาน" },
+                ]}
+              />
+            </div>
+            <Field label="ยอดตั้งต้น">
+              <MoneyInput value={memberOpeningBalance} onChange={setMemberOpeningBalance} />
+            </Field>
+            <Button type="submit" disabled={isPending || !memberName.trim()} className="sm:self-end">
+              {isPending ? "กำลังเพิ่ม..." : "เพิ่ม"}
+            </Button>
           </form>
         </Card>
       )}
 
       {parents.length > 0 && (
-        <div>
-          <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">พ่อแม่</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <section>
+          <h2 className="mb-3 text-sm font-semibold text-slate-900">พ่อแม่</h2>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
             {parents.map((m) => (
-              <MemberCard key={m.id} member={m} addingTxFor={addingTxFor} setAddingTxFor={setAddingTxFor}
-                txAmount={txAmount} setTxAmount={setTxAmount} txDate={txDate} setTxDate={setTxDate}
-                txNote={txNote} setTxNote={setTxNote} isPending={isPending} onAddTx={handleAddTx}
-                onEditOpening={() => {
-                  setEditMember(m);
-                  setEditOpeningBalance((m.openingBalanceCents / 100).toFixed(2));
-                }}
-                onDelete={() => setDeleteId(m.id)} />
+              <MemberCard key={m.id} {...cardProps(m)} />
             ))}
           </div>
-        </div>
+        </section>
       )}
 
       {children.length > 0 && (
-        <div>
-          <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-3">หลาน</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <section>
+          <h2 className="mb-3 text-sm font-semibold text-slate-900">หลาน</h2>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
             {children.map((m) => (
-              <MemberCard key={m.id} member={m} addingTxFor={addingTxFor} setAddingTxFor={setAddingTxFor}
-                txAmount={txAmount} setTxAmount={setTxAmount} txDate={txDate} setTxDate={setTxDate}
-                txNote={txNote} setTxNote={setTxNote} isPending={isPending} onAddTx={handleAddTx}
-                onEditOpening={() => {
-                  setEditMember(m);
-                  setEditOpeningBalance((m.openingBalanceCents / 100).toFixed(2));
-                }}
-                onDelete={() => setDeleteId(m.id)} />
+              <MemberCard key={m.id} {...cardProps(m)} />
             ))}
           </div>
-        </div>
+        </section>
       )}
 
       {members.length === 0 && (
         <Card>
-          <EmptyState icon={<Users className="w-8 h-8" />} title="ยังไม่มีสมาชิก" description="เพิ่มสมาชิกครอบครัวเพื่อเริ่มติดตาม" />
+          <EmptyState icon={<Users className="h-8 w-8" />} title="ยังไม่มีสมาชิก" description="เพิ่มสมาชิกครอบครัวเพื่อเริ่มติดตาม" />
         </Card>
       )}
 
@@ -231,21 +244,14 @@ export function FamilyList({
           }
         }}
       >
-        <DialogContent className="max-w-md">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>แก้ไขยอดตั้งต้น: {editMember?.name}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSaveEditMember} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="familyOpening">ยอดตั้งต้น (บาท)</Label>
-              <Input
-                id="familyOpening"
-                type="number"
-                step="0.01"
-                value={editOpeningBalance}
-                onChange={(e) => setEditOpeningBalance(e.target.value)}
-                placeholder="0.00"
-              />
+              <MoneyInput id="familyOpening" value={editOpeningBalance} onChange={setEditOpeningBalance} />
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setEditMember(null)}>
@@ -273,91 +279,122 @@ export function FamilyList({
 }
 
 function MemberCard({
-  member, addingTxFor, setAddingTxFor, txAmount, setTxAmount, txDate, setTxDate, txNote, setTxNote, isPending, onAddTx,
-  onEditOpening, onDelete,
+  member,
+  adding,
+  setAddingTxFor,
+  txAmount,
+  setTxAmount,
+  txDate,
+  setTxDate,
+  txNote,
+  setTxNote,
+  isPending,
+  onAddTx,
+  onEditOpening,
+  onDelete,
 }: {
-  member: { id: string; name: string; type: "PARENT" | "CHILD"; openingBalanceCents: number; transactions: { id: string; amountCents: number; date: string; note: string | null }[]; totalCents: number };
-  addingTxFor: string | null; setAddingTxFor: (v: string | null) => void;
-  txAmount: string; setTxAmount: (v: string) => void;
-  txDate: string; setTxDate: (v: string) => void;
-  txNote: string; setTxNote: (v: string) => void;
-  isPending: boolean; onAddTx: (e: React.FormEvent, memberId: string) => void;
+  member: Member;
+  adding: boolean;
+  setAddingTxFor: (v: string | null) => void;
+  txAmount: string;
+  setTxAmount: (v: string) => void;
+  txDate: string;
+  setTxDate: (v: string) => void;
+  txNote: string;
+  setTxNote: (v: string) => void;
+  isPending: boolean;
+  onAddTx: (e: React.FormEvent, memberId: string) => void;
   onEditOpening: () => void;
   onDelete: () => void;
 }) {
   const txTotal = member.transactions.reduce((s, tx) => s + tx.amountCents, 0);
+
   return (
-    <Card className="group relative overflow-hidden hover:shadow-md transition-shadow">
-      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-400 to-rose-400" />
-      <div className="p-5">
-        <div className="flex items-start justify-between gap-2 mb-3">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center">
-              <Users className="w-4 h-4 text-orange-600" />
-            </div>
+    <Card className="relative overflow-hidden">
+      <div className="absolute inset-x-0 top-0 h-1 bg-orange-400" aria-hidden />
+      <div className="p-4 sm:p-5">
+        <div className="mb-3 flex items-start justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-orange-50">
+              <Users className="h-4 w-4 text-orange-600" />
+            </span>
             <div className="min-w-0">
-              <h3 className="font-semibold text-slate-900 truncate">{member.name}</h3>
-              <Badge variant={member.type === "PARENT" ? "purple" : "info"} className="mt-0.5">
-                {member.type === "PARENT" ? "พ่อแม่" : "หลาน"}
-              </Badge>
+              <h3 className="truncate font-semibold text-slate-900">{member.name}</h3>
+              <p className="text-xs text-slate-500">{member.type === "PARENT" ? "พ่อแม่" : "หลาน"}</p>
             </div>
           </div>
-          <div className="flex items-center gap-0.5">
-            <Button size="icon" variant="ghost" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity" onClick={onEditOpening}>
-              <Pencil className="w-3.5 h-3.5" />
-            </Button>
-            <Button size="icon" variant="ghost" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700 hover:bg-red-50" onClick={onDelete}>
-              <Trash2 className="w-3.5 h-3.5" />
-            </Button>
-          </div>
+          <RowActions
+            label={`ตัวเลือกของ ${member.name}`}
+            className="-mr-1.5"
+            actions={[
+              { label: "แก้ไขยอดตั้งต้น", icon: Pencil, onSelect: onEditOpening },
+              { label: "ลบสมาชิก", icon: Trash2, onSelect: onDelete, destructive: true },
+            ]}
+          />
         </div>
 
-        <p className="text-2xl font-bold tabular-nums text-indigo-600 mb-3">
+        <p className="text-xs text-slate-500">ยอดรวม</p>
+        <p className="mt-0.5 text-2xl font-semibold tabular-nums tracking-tight text-indigo-600">
           {formatTHB(member.totalCents)}
         </p>
 
-        <div className="grid grid-cols-2 gap-3 mb-3">
-          <div className="flex flex-col items-center rounded-lg bg-slate-50 px-2 py-2">
-            <span className="text-[10px] text-slate-400 mb-0.5">ตั้งต้น</span>
-            <span className="text-xs font-semibold tabular-nums text-slate-700">{formatTHB(member.openingBalanceCents)}</span>
+        <dl className="mt-3 grid grid-cols-2 gap-2">
+          <div className="rounded-lg bg-slate-50 px-3 py-2">
+            <dt className="text-[11px] text-slate-500">ตั้งต้น</dt>
+            <dd className="text-xs font-semibold tabular-nums text-slate-700">{formatTHB(member.openingBalanceCents)}</dd>
           </div>
-          <div className="flex flex-col items-center rounded-lg bg-emerald-50 px-2 py-2">
-            <span className="text-[10px] text-emerald-500 mb-0.5">ธุรกรรม</span>
-            <span className="text-xs font-semibold tabular-nums text-emerald-700">{formatTHB(txTotal)}</span>
+          <div className="rounded-lg bg-emerald-50 px-3 py-2">
+            <dt className="text-[11px] text-emerald-700">ธุรกรรม</dt>
+            <dd className="text-xs font-semibold tabular-nums text-emerald-700">{formatTHB(txTotal)}</dd>
           </div>
-        </div>
+        </dl>
 
-        <div className="flex justify-end mb-2">
-          <Button size="sm" variant="outline" onClick={() => setAddingTxFor(addingTxFor === member.id ? null : member.id)}>
-            <Plus className="w-3.5 h-3.5" />
-            เพิ่มรายการ
-          </Button>
-        </div>
-
-        {addingTxFor === member.id && (
-          <form onSubmit={(e) => onAddTx(e, member.id)} className="mb-3 flex gap-2 flex-wrap">
-            <MoneyInput value={txAmount} onChange={setTxAmount} placeholder="จำนวนเงิน" className="w-full sm:w-36" />
-            <Input type="date" value={txDate} onChange={(e) => setTxDate(e.target.value)} className="w-full sm:w-auto" />
-            <Input value={txNote} onChange={(e) => setTxNote(e.target.value)} placeholder="หมายเหตุ" className="flex-1 min-w-[120px]" />
-            <Button type="submit" disabled={isPending} size="sm">บันทึก</Button>
+        {adding ? (
+          <form
+            onSubmit={(e) => onAddTx(e, member.id)}
+            className="mt-4 grid grid-cols-2 gap-3 rounded-xl border border-slate-200 p-3"
+          >
+            <Field label="จำนวนเงิน" className="col-span-2 sm:col-span-1">
+              <MoneyInput value={txAmount} onChange={setTxAmount} autoFocus />
+            </Field>
+            <Field label="วันที่" className="col-span-2 sm:col-span-1">
+              <Input type="date" value={txDate} onChange={(e) => setTxDate(e.target.value)} />
+            </Field>
+            <Field label="หมายเหตุ" className="col-span-2">
+              <Input value={txNote} onChange={(e) => setTxNote(e.target.value)} placeholder="ไม่บังคับ" />
+            </Field>
+            <Button type="button" variant="outline" onClick={() => setAddingTxFor(null)}>
+              ยกเลิก
+            </Button>
+            <Button type="submit" disabled={isPending || !txAmount}>
+              {isPending ? "กำลังบันทึก..." : "บันทึก"}
+            </Button>
           </form>
+        ) : (
+          <Button size="sm" variant="outline" className="mt-4 w-full" onClick={() => setAddingTxFor(member.id)}>
+            <Plus className="h-3.5 w-3.5" />
+            บันทึกเงินที่ให้
+          </Button>
         )}
 
         {member.transactions.length > 0 && (
-          <div className="border-t border-slate-100 pt-2 space-y-1">
-            {[...member.transactions].reverse().slice(0, 5).map((tx) => (
-              <div key={tx.id} className="flex items-center justify-between text-sm py-1">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-slate-400 text-xs flex-shrink-0">{tx.date}</span>
-                  {tx.note && <span className="text-xs text-slate-400 truncate">{tx.note}</span>}
-                </div>
-                <span className="font-medium tabular-nums text-slate-900 flex-shrink-0">{formatTHB(tx.amountCents)}</span>
-              </div>
-            ))}
+          <ul className="mt-4 divide-y divide-slate-100 border-t border-slate-100">
+            {[...member.transactions]
+              .reverse()
+              .slice(0, 5)
+              .map((tx) => (
+                <li key={tx.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="shrink-0 text-xs tabular-nums text-slate-500">{tx.date}</span>
+                    {tx.note && <span className="truncate text-xs text-slate-400">{tx.note}</span>}
+                  </div>
+                  <span className="shrink-0 font-medium tabular-nums text-slate-900">{formatTHB(tx.amountCents)}</span>
+                </li>
+              ))}
             {member.transactions.length > 5 && (
-              <p className="text-xs text-slate-400 text-center pt-1">+{member.transactions.length - 5} รายการ</p>
+              <li className="pt-2 text-center text-xs text-slate-500">และอีก {member.transactions.length - 5} รายการ</li>
             )}
-          </div>
+          </ul>
         )}
       </div>
     </Card>

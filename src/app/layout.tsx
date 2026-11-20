@@ -1,35 +1,44 @@
-import type { Metadata } from "next";
-import { headers } from "next/headers";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { Sidebar } from "@/components/Sidebar";
+import { AppShell } from "@/components/AppShell";
 import { Toaster } from "sonner";
+
+// Every page reads live data from the database; never prerender at build time.
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Finance Planner",
   description: "ระบบสรุปการเงินรายเดือน",
+  applicationName: "Finance Planner",
+  appleWebApp: {
+    capable: true,
+    title: "Finance",
+    statusBarStyle: "default",
+  },
+  formatDetection: { telephone: false },
 };
 
-export default async function RootLayout({
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#f8fafc",
+};
+
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const headersList = await headers();
-  const pathname = headersList.get("x-invoke-path") || "";
-  const isLoginPage = pathname === "/login";
-
   return (
     <html lang="th">
       <body className="bg-slate-50 text-slate-900 antialiased">
-        <div className="flex min-h-screen">
-          {!isLoginPage && <Sidebar />}
-          <main className="flex-1 overflow-auto">
-            <div className={`container mx-auto max-w-7xl px-4 pt-14 pb-6 md:pt-8 md:px-8 md:pb-8 ${isLoginPage ? "p-0 max-w-none" : ""}`}>
-              {children}
-            </div>
-          </main>
-        </div>
-        <Toaster position="bottom-right" richColors />
+        <AppShell>{children}</AppShell>
+        <Toaster
+          position="bottom-right"
+          richColors
+          mobileOffset={{ bottom: "calc(5rem + env(safe-area-inset-bottom))" }}
+        />
       </body>
     </html>
   );

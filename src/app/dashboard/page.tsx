@@ -1,17 +1,20 @@
+import Link from "next/link";
+import { ArrowRight, CalendarPlus, CheckCircle2, Clock, SkipForward } from "lucide-react";
 import { getDemoUserId } from "@/lib/demo-user";
 import { getMonthlyPlan, getMonthlyPlans } from "@/actions/monthly";
 import { calculateMonthlySummary } from "@/lib/calc/monthly";
-import { formatTHB } from "@/lib/money";
-import { fromCents } from "@/lib/money";
-import Link from "next/link";
-import { Card, CardTitle, CardValue } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { formatTHB, fromCents } from "@/lib/money";
+import { cn } from "@/lib/utils";
+import { Card } from "@/components/ui/card";
+import { buttonVariants } from "@/components/ui/button";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
-import { DashboardMonthPicker } from "./DashboardMonthPicker";
+import { MonthPicker, formatThaiMonth } from "@/components/MonthPicker";
+import { SummaryStats, ChecklistProgress } from "@/components/SummaryStats";
 import { DashboardChart } from "./DashboardChart";
-import { CalendarPlus, CheckCircle2, Clock, SkipForward } from "lucide-react";
+import { PendingItemsList } from "./PendingItemsList";
+
+const PENDING_LIMIT = 8;
 
 export default async function DashboardPage({
   searchParams,
@@ -25,8 +28,10 @@ export default async function DashboardPage({
     params.month ??
     `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
-  const plan = await getMonthlyPlan(userId, currentMonth);
-  const allPlans = await getMonthlyPlans(userId);
+  const [plan, allPlans] = await Promise.all([
+    getMonthlyPlan(userId, currentMonth),
+    getMonthlyPlans(userId),
+  ]);
 
   const summary = plan
     ? calculateMonthlySummary(plan.items, plan.startingBalanceCents)
@@ -35,14 +40,6 @@ export default async function DashboardPage({
   const pendingItems = plan
     ? plan.items.filter((i) => i.status === "PLANNED")
     : [];
-
-  const CATEGORY_LABELS: Record<string, string> = {
-    INCOME: "รายรับ",
-    EXPENSE: "รายจ่าย",
-    SAVING: "เงินออม",
-    GOAL: "เป้าหมาย",
-    FAMILY: "ครอบครัว",
-  };
 
   const chartData = summary
     ? [
@@ -55,158 +52,154 @@ export default async function DashboardPage({
     : [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 sm:space-y-6">
       <PageHeader title="Dashboard" subtitle="ภาพรวมการเงินรายเดือน">
-        <DashboardMonthPicker currentMonth={currentMonth} />
+        <MonthPicker currentMonth={currentMonth} basePath="/dashboard" mode="query" />
       </PageHeader>
 
-      {!plan ? (
+      {!plan || !summary ? (
         <Card>
           <EmptyState
-            icon={<CalendarPlus className="w-10 h-10" />}
-            title={`ยังไม่มีแผนสำหรับเดือน ${currentMonth}`}
+            icon={<CalendarPlus className="h-10 w-10" />}
+            title={`ยังไม่มีแผนสำหรับ${formatThaiMonth(currentMonth)}`}
             description="สร้างแผนรายเดือนจาก template เพื่อเริ่มติดตามการเงิน"
             action={
-              <Link href={`/month/${currentMonth}`}>
-                <Button>สร้างแผนเดือนนี้</Button>
+              <Link href={`/month/${currentMonth}`} className={buttonVariants()}>
+                สร้างแผนเดือนนี้
               </Link>
             }
           />
         </Card>
       ) : (
-        <>
-          {/* Summary Cards Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            <Card className="p-5">
-              <CardTitle>รายรับ</CardTitle>
-              <CardValue className="text-emerald-600">{formatTHB(summary!.incomeTotal)}</CardValue>
-            </Card>
-            <Card className="p-5">
-              <CardTitle>รายจ่าย</CardTitle>
-              <CardValue className="text-red-600">{formatTHB(summary!.expenseTotal)}</CardValue>
-            </Card>
-            <Card className="p-5">
-              <CardTitle>เงินออม</CardTitle>
-              <CardValue className="text-indigo-600">{formatTHB(summary!.savingsTotal)}</CardValue>
-            </Card>
-            <Card className="p-5">
-              <CardTitle>เป้าหมาย</CardTitle>
-              <CardValue className="text-purple-600">{formatTHB(summary!.goalSavingsTotal)}</CardValue>
-            </Card>
-            <Card className="p-5">
-              <CardTitle>ครอบครัว</CardTitle>
-              <CardValue className="text-orange-600">{formatTHB(summary!.familySupportTotal)}</CardValue>
-            </Card>
-            <Card className="p-5">
-              <CardTitle>คงเหลือ</CardTitle>
-              <CardValue className={summary!.netCashflow >= 0 ? "text-emerald-600" : "text-red-600"}>
-                {formatTHB(summary!.netCashflow)}
-              </CardValue>
-            </Card>
-          </div>
+        <div className="flex flex-col gap-5 sm:gap-6">
+          <SummaryStats
+            items={[
+              { label: "รายรับ", value: formatTHB(summary.incomeTotal), tone: "income" },
+              { label: "รายจ่าย", value: formatTHB(summary.expenseTotal), tone: "expense" },
+              { label: "เงินออม", value: formatTHB(summary.savingsTotal), tone: "saving" },
+              { label: "เป้าหมาย", value: formatTHB(summary.goalSavingsTotal), tone: "goal" },
+              { label: "ครอบครัว", value: formatTHB(summary.familySupportTotal), tone: "family" },
+            ]}
+            highlight={{
+              label: "คงเหลือ",
+              value: formatTHB(summary.netCashflow),
+              tone: summary.netCashflow >= 0 ? "positive" : "negative",
+            }}
+          />
 
-          {/* Chart + Status Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <Card className="lg:col-span-2 p-6">
-              <h2 className="text-sm font-medium text-slate-500 mb-4">สัดส่วนรายจ่าย</h2>
+          {/* Pending items come before the chart on phones: they are what you act on. */}
+          <Card className="order-2 overflow-hidden lg:order-3">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-6 sm:py-4">
+              <h2 className="text-sm font-semibold text-slate-900">
+                รายการค้าง
+                <span className="ml-1.5 font-normal tabular-nums text-slate-400">{pendingItems.length}</span>
+              </h2>
+              <Link
+                href={`/month/${currentMonth}`}
+                className="-mr-2 inline-flex h-9 items-center gap-1 rounded-lg px-2 text-sm font-medium text-indigo-600 hover:bg-indigo-50 pointer-coarse:h-11"
+              >
+                ดูทั้งหมด
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </div>
+            {pendingItems.length === 0 ? (
+              <EmptyState
+                icon={<CheckCircle2 className="h-8 w-8 text-emerald-400" />}
+                title="ไม่มีรายการค้าง"
+                description="ทุกรายการของเดือนนี้ดำเนินการแล้ว"
+              />
+            ) : (
+              <>
+                <PendingItemsList
+                  items={pendingItems.slice(0, PENDING_LIMIT).map((i) => ({
+                    id: i.id,
+                    name: i.name,
+                    category: i.category,
+                    status: i.status,
+                    amountCents: i.actualAmountCents ?? i.plannedAmountCents,
+                  }))}
+                />
+                {pendingItems.length > PENDING_LIMIT && (
+                  <Link
+                    href={`/month/${currentMonth}`}
+                    className="block border-t border-slate-100 px-4 py-3 text-center text-sm font-medium text-indigo-600 hover:bg-slate-50 sm:px-6"
+                  >
+                    อีก {pendingItems.length - PENDING_LIMIT} รายการในแผนเดือนนี้
+                  </Link>
+                )}
+              </>
+            )}
+          </Card>
+
+          <div className="order-3 grid grid-cols-1 gap-5 sm:gap-6 lg:order-2 lg:grid-cols-3">
+            <Card className="p-4 sm:p-6 lg:col-span-2">
+              <h2 className="mb-4 text-sm font-semibold text-slate-900">สัดส่วนรายรับ–รายจ่าย</h2>
               <DashboardChart data={chartData} />
             </Card>
 
-            <Card className="p-6 space-y-5">
-              <h2 className="text-sm font-medium text-slate-500">สถานะรายการ</h2>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-sm text-slate-600">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                    เสร็จแล้ว
-                  </div>
-                  <span className="font-semibold tabular-nums text-slate-900">{summary!.totalDone}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-sm text-slate-600">
-                    <Clock className="w-4 h-4 text-slate-400" />
-                    รอดำเนินการ
-                  </div>
-                  <span className="font-semibold tabular-nums text-slate-900">{summary!.totalPlanned}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-sm text-slate-600">
-                    <SkipForward className="w-4 h-4 text-amber-400" />
-                    ข้าม
-                  </div>
-                  <span className="font-semibold tabular-nums text-slate-900">{summary!.totalSkipped}</span>
-                </div>
-              </div>
-              {summary!.endingBalance != null && (
-                <div className="pt-4 border-t border-slate-100">
-                  <p className="text-xs text-slate-400">ยอดคงเหลือปลายเดือน</p>
-                  <p className="text-xl font-semibold tabular-nums text-indigo-600 mt-1">
-                    {formatTHB(summary!.endingBalance)}
+            <Card className="flex flex-col gap-5 p-4 sm:p-6">
+              <h2 className="text-sm font-semibold text-slate-900">สถานะรายการ</h2>
+              <ChecklistProgress done={summary.totalDone} skipped={summary.totalSkipped} total={plan.items.length} />
+              <dl className="grid grid-cols-3 gap-2 lg:grid-cols-1 lg:gap-3">
+                <StatusCount icon={CheckCircle2} iconClass="text-emerald-500" label="เสร็จแล้ว" value={summary.totalDone} />
+                <StatusCount icon={Clock} iconClass="text-slate-400" label="รอดำเนินการ" value={summary.totalPlanned} />
+                <StatusCount icon={SkipForward} iconClass="text-amber-500" label="ข้าม" value={summary.totalSkipped} />
+              </dl>
+              {summary.endingBalance != null && (
+                <div className="mt-auto border-t border-slate-100 pt-4">
+                  <p className="text-xs text-slate-500">ยอดคงเหลือปลายเดือน</p>
+                  <p className="mt-1 text-xl font-semibold tabular-nums text-indigo-600">
+                    {formatTHB(summary.endingBalance)}
                   </p>
                 </div>
               )}
             </Card>
           </div>
-
-          {/* Pending Items */}
-          <Card>
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="text-sm font-medium text-slate-900">
-                รายการค้าง
-                <span className="ml-2 text-slate-400">({pendingItems.length})</span>
-              </h2>
-              <Link href={`/month/${currentMonth}`} className="text-xs text-indigo-600 hover:underline">
-                ดูทั้งหมด →
-              </Link>
-            </div>
-            {pendingItems.length === 0 ? (
-              <div className="px-6 py-8 text-center text-sm text-slate-400">
-                ไม่มีรายการค้าง
-              </div>
-            ) : (
-              <div className="divide-y divide-slate-50">
-                {pendingItems.slice(0, 8).map((item) => (
-                  <div key={item.id} className="flex items-center justify-between px-6 py-3">
-                    <div className="flex items-center gap-2.5">
-                      <Badge variant={
-                        item.category === "INCOME" ? "success" :
-                        item.category === "EXPENSE" ? "destructive" :
-                        item.category === "SAVING" ? "info" :
-                        item.category === "GOAL" ? "purple" : "orange"
-                      }>
-                        {CATEGORY_LABELS[item.category]}
-                      </Badge>
-                      <span className="text-sm text-slate-700">{item.name}</span>
-                    </div>
-                    <span className="text-sm font-medium tabular-nums text-slate-900">
-                      {formatTHB(item.actualAmountCents ?? item.plannedAmountCents)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-        </>
+        </div>
       )}
 
-      {/* All plans */}
       {allPlans.length > 0 && (
-        <Card className="p-6">
-          <h2 className="text-sm font-medium text-slate-500 mb-3">แผนรายเดือนทั้งหมด</h2>
-          <div className="flex flex-wrap gap-2">
+        <Card className="p-4 sm:p-6">
+          <h2 className="mb-3 text-sm font-semibold text-slate-900">แผนรายเดือนทั้งหมด</h2>
+          <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:flex-wrap sm:px-0">
             {allPlans.map((p) => (
-              <Link key={p.id} href={`/month/${p.month}`}>
-                <Button
-                  variant={p.month === currentMonth ? "default" : "outline"}
-                  size="sm"
-                >
-                  {p.month}
-                </Button>
+              <Link
+                key={p.id}
+                href={`/month/${p.month}`}
+                aria-current={p.month === currentMonth ? "true" : undefined}
+                className={cn(
+                  buttonVariants({ variant: p.month === currentMonth ? "default" : "outline", size: "sm" }),
+                  "shrink-0 tabular-nums"
+                )}
+              >
+                {formatThaiMonth(p.month)}
               </Link>
             ))}
           </div>
         </Card>
       )}
+    </div>
+  );
+}
+
+function StatusCount({
+  icon: Icon,
+  iconClass,
+  label,
+  value,
+}: {
+  icon: typeof Clock;
+  iconClass: string;
+  label: string;
+  value: number;
+}) {
+  return (
+    <div className="flex flex-col gap-1 rounded-xl bg-slate-50 px-3 py-2.5 lg:flex-row lg:items-center lg:justify-between lg:bg-transparent lg:p-0">
+      <dt className="flex items-center gap-1.5 text-xs text-slate-600 lg:text-sm">
+        <Icon className={cn("h-4 w-4 shrink-0", iconClass)} />
+        <span className="truncate">{label}</span>
+      </dt>
+      <dd className="text-lg font-semibold tabular-nums text-slate-900 lg:text-base">{value}</dd>
     </div>
   );
 }

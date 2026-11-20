@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { Pencil } from "lucide-react";
+import { toast } from "sonner";
 import { updateAssetAccount } from "@/actions/assets";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
@@ -10,8 +11,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, Pencil } from "lucide-react";
-import { toast } from "sonner";
+
+const TYPE_LABELS: Record<string, string> = {
+  STOCK: "หุ้น",
+  FUND: "กองทุน",
+  CRYPTO: "Crypto",
+  BANK: "เงินฝาก",
+};
 
 export function AssetDetailHeader({
   assetId,
@@ -43,7 +49,7 @@ export function AssetDetailHeader({
       setEditing(false);
       router.refresh();
     } catch {
-      toast.error("เกิดข้อผิดพลาด");
+      toast.error("บันทึกไม่สำเร็จ ลองอีกครั้ง");
     } finally {
       setSaving(false);
     }
@@ -51,30 +57,32 @@ export function AssetDetailHeader({
 
   return (
     <>
-      <div className="flex items-center gap-3">
-        <Link href="/portfolio" className="text-slate-400 hover:text-slate-600 transition-colors">
-          <ArrowLeft className="w-4 h-4" />
-        </Link>
-        <PageHeader
-          title={
-            <span>
-              {symbol}
-              {name && <span className="text-slate-400 font-normal ml-2">— {name}</span>}
-            </span>
-          }
-        />
-        <Badge>{type}</Badge>
-        <Button size="sm" variant="ghost" onClick={() => {
-          setEditSymbol(symbol);
-          setEditName(name ?? "");
-          setEditing(true);
-        }}>
-          <Pencil className="w-4 h-4 text-slate-400" />
+      <PageHeader
+        backHref="/portfolio"
+        backLabel="กลับไป Portfolio"
+        title={
+          <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+            {symbol}
+            <Badge className="align-middle">{TYPE_LABELS[type] ?? type}</Badge>
+          </span>
+        }
+        subtitle={name ?? undefined}
+      >
+        <Button
+          variant="outline"
+          onClick={() => {
+            setEditSymbol(symbol);
+            setEditName(name ?? "");
+            setEditing(true);
+          }}
+        >
+          <Pencil className="h-4 w-4" />
+          แก้ไขข้อมูล
         </Button>
-      </div>
+      </PageHeader>
 
       <Dialog open={editing} onOpenChange={(open) => !open && setEditing(false)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>แก้ไขข้อมูลสินทรัพย์</DialogTitle>
           </DialogHeader>
@@ -86,6 +94,7 @@ export function AssetDetailHeader({
                 value={editSymbol}
                 onChange={(e) => setEditSymbol(e.target.value)}
                 placeholder="Symbol / Code"
+                autoCorrect="off"
               />
             </div>
             <div className="space-y-2">
@@ -94,7 +103,7 @@ export function AssetDetailHeader({
                 id="editName"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
-                placeholder="ชื่อสินทรัพย์ (optional)"
+                placeholder="ชื่อสินทรัพย์ (ไม่บังคับ)"
               />
             </div>
             <DialogFooter>

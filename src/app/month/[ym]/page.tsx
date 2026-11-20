@@ -3,9 +3,9 @@ import { getMonthlyPlan } from "@/actions/monthly";
 import { getTemplates } from "@/actions/templates";
 import { calculateMonthlySummary } from "@/lib/calc/monthly";
 import { formatTHB } from "@/lib/money";
-import { Card, CardTitle, CardValue } from "@/components/ui/card";
 import { PageHeader } from "@/components/PageHeader";
-import { MonthPicker } from "@/components/MonthPicker";
+import { MonthPicker, formatThaiMonth } from "@/components/MonthPicker";
+import { SummaryStats, ChecklistProgress } from "@/components/SummaryStats";
 import { MonthlyItemsTable } from "./MonthlyItemsTable";
 import { CreatePlanForm } from "./CreatePlanForm";
 import { MonthMaintenanceActions } from "./MonthMaintenanceActions";
@@ -25,44 +25,35 @@ export default async function MonthPage({
     : null;
 
   return (
-    <div className="space-y-6">
-      <PageHeader title="แผนรายเดือน" subtitle={`เดือน ${ym}`}>
+    <div className="space-y-5 sm:space-y-6">
+      <PageHeader title="แผนรายเดือน" subtitle={formatThaiMonth(ym)}>
+        <MonthPicker currentMonth={ym} className="flex-1 sm:flex-none" />
         <MonthMaintenanceActions userId={userId} />
-        <MonthPicker currentMonth={ym} />
       </PageHeader>
 
-      {!plan ? (
+      {!plan || !summary ? (
         <CreatePlanForm month={ym} templates={templates} userId={userId} />
       ) : (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            <Card className="p-5">
-              <CardTitle>รายรับ</CardTitle>
-              <CardValue className="text-emerald-600">{formatTHB(summary!.incomeTotal)}</CardValue>
-            </Card>
-            <Card className="p-5">
-              <CardTitle>รายจ่าย</CardTitle>
-              <CardValue className="text-red-600">{formatTHB(summary!.expenseTotal)}</CardValue>
-            </Card>
-            <Card className="p-5">
-              <CardTitle>เงินออม</CardTitle>
-              <CardValue className="text-indigo-600">{formatTHB(summary!.savingsTotal)}</CardValue>
-            </Card>
-            <Card className="p-5">
-              <CardTitle>เป้าหมาย</CardTitle>
-              <CardValue className="text-purple-600">{formatTHB(summary!.goalSavingsTotal)}</CardValue>
-            </Card>
-            <Card className="p-5">
-              <CardTitle>ครอบครัว</CardTitle>
-              <CardValue className="text-orange-600">{formatTHB(summary!.familySupportTotal)}</CardValue>
-            </Card>
-            <Card className="p-5">
-              <CardTitle>คงเหลือ</CardTitle>
-              <CardValue className={summary!.netCashflow >= 0 ? "text-emerald-600" : "text-red-600"}>
-                {formatTHB(summary!.netCashflow)}
-              </CardValue>
-            </Card>
+          <SummaryStats
+            items={[
+              { label: "รายรับ", value: formatTHB(summary.incomeTotal), tone: "income" },
+              { label: "รายจ่าย", value: formatTHB(summary.expenseTotal), tone: "expense" },
+              { label: "เงินออม", value: formatTHB(summary.savingsTotal), tone: "saving" },
+              { label: "เป้าหมาย", value: formatTHB(summary.goalSavingsTotal), tone: "goal" },
+              { label: "ครอบครัว", value: formatTHB(summary.familySupportTotal), tone: "family" },
+            ]}
+            highlight={{
+              label: "คงเหลือ",
+              value: formatTHB(summary.netCashflow),
+              tone: summary.netCashflow >= 0 ? "positive" : "negative",
+            }}
+          />
+
+          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3.5 shadow-sm sm:px-5">
+            <ChecklistProgress done={summary.totalDone} skipped={summary.totalSkipped} total={plan.items.length} />
           </div>
+
           <MonthlyItemsTable items={plan.items} />
         </>
       )}

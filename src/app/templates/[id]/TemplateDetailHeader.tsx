@@ -2,13 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { Pencil, Check, X } from "lucide-react";
+import { toast } from "sonner";
 import { updateTemplate } from "@/actions/templates";
 import { PageHeader } from "@/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Pencil, Check, X } from "lucide-react";
-import { toast } from "sonner";
 
 export function TemplateDetailHeader({
   templateId,
@@ -22,10 +21,15 @@ export function TemplateDetailHeader({
   const [name, setName] = useState(templateName);
   const [saving, setSaving] = useState(false);
 
-  async function handleSave() {
+  function cancel() {
+    setEditing(false);
+    setName(templateName);
+  }
+
+  async function handleSave(e?: React.FormEvent) {
+    e?.preventDefault();
     if (!name.trim() || name.trim() === templateName) {
-      setEditing(false);
-      setName(templateName);
+      cancel();
       return;
     }
     setSaving(true);
@@ -35,57 +39,40 @@ export function TemplateDetailHeader({
       setEditing(false);
       router.refresh();
     } catch {
-      toast.error("เกิดข้อผิดพลาด");
+      toast.error("แก้ไขชื่อไม่สำเร็จ ลองอีกครั้ง");
     } finally {
       setSaving(false);
     }
   }
 
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Enter") handleSave();
-    if (e.key === "Escape") {
-      setEditing(false);
-      setName(templateName);
-    }
+  if (editing) {
+    return (
+      <form onSubmit={handleSave} className="flex items-center gap-2">
+        <Input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onKeyDown={(e) => e.key === "Escape" && cancel()}
+          className="max-w-md flex-1 text-base font-semibold"
+          aria-label="ชื่อ template"
+          autoFocus
+          disabled={saving}
+        />
+        <Button type="submit" size="icon" variant="outline" disabled={saving} aria-label="บันทึกชื่อ">
+          <Check className="h-4 w-4 text-emerald-600" />
+        </Button>
+        <Button type="button" size="icon" variant="ghost" onClick={cancel} aria-label="ยกเลิก">
+          <X className="h-4 w-4 text-slate-500" />
+        </Button>
+      </form>
+    );
   }
 
   return (
-    <div className="flex items-center gap-3">
-      <Link href="/templates" className="text-slate-400 hover:text-slate-600 transition-colors">
-        <ArrowLeft className="w-4 h-4" />
-      </Link>
-      {editing ? (
-        <div className="flex items-center gap-2 flex-1">
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onKeyDown={handleKeyDown}
-            className="max-w-xs"
-            autoFocus
-            disabled={saving}
-          />
-          <Button size="sm" variant="ghost" onClick={handleSave} disabled={saving}>
-            <Check className="w-4 h-4 text-emerald-600" />
-          </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => {
-              setEditing(false);
-              setName(templateName);
-            }}
-          >
-            <X className="w-4 h-4 text-slate-400" />
-          </Button>
-        </div>
-      ) : (
-        <div className="flex items-center gap-2">
-          <PageHeader title={templateName} subtitle="แก้ไขรายการ template" />
-          <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
-            <Pencil className="w-4 h-4 text-slate-400" />
-          </Button>
-        </div>
-      )}
-    </div>
+    <PageHeader title={templateName} subtitle="แก้ไขรายการ template" backHref="/templates" backLabel="กลับไปหน้า Templates">
+      <Button variant="outline" onClick={() => setEditing(true)}>
+        <Pencil className="h-4 w-4" />
+        แก้ไขชื่อ
+      </Button>
+    </PageHeader>
   );
 }

@@ -2,21 +2,22 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Plus, Trash2, Pencil, X } from "lucide-react";
+import { toast } from "sonner";
 import { createTemplateItem, deleteTemplateItem, updateTemplateItem } from "@/actions/templates";
 import { formatTHB, toCents } from "@/lib/money";
+import { cn } from "@/lib/utils";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
-import { Plus, Trash2, MoreHorizontal } from "lucide-react";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { DropdownMenu, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuContent } from "@/components/ui/dropdown-menu";
-import { toast } from "sonner";
-import { MoneyInput } from "@/components/MoneyInput";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { MoneyInput } from "@/components/MoneyInput";
+import { RowActions } from "@/components/RowActions";
+import { Field } from "@/components/Field";
 
 type Item = {
   id: string;
@@ -32,7 +33,7 @@ type Item = {
 
 type EditorCategory = "INCOME" | "EXPENSE" | "SAVING" | "GOAL" | "FAMILY" | "LOAN";
 
-const CATEGORY_OPTIONS = [
+const CATEGORY_OPTIONS: { value: EditorCategory; label: string }[] = [
   { value: "INCOME", label: "รายรับ" },
   { value: "EXPENSE", label: "รายจ่าย" },
   { value: "LOAN", label: "ค่าสินเชื่อ" },
@@ -73,6 +74,13 @@ export function TemplateItemsEditor({
   const [editInterestRate, setEditInterestRate] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
 
+  function openEdit(item: Item) {
+    setEditItem(item);
+    setEditSlug(item.slug || "");
+    setEditAmount((item.defaultAmountCents / 100).toFixed(2));
+    setEditInterestRate(item.interestRate || "");
+  }
+
   function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
@@ -97,7 +105,7 @@ export function TemplateItemsEditor({
         toast.success("เพิ่มรายการแล้ว");
         router.refresh();
       } catch {
-        toast.error("เกิดข้อผิดพลาด");
+        toast.error("เพิ่มรายการไม่สำเร็จ ลองอีกครั้ง");
       }
     });
   }
@@ -123,7 +131,7 @@ export function TemplateItemsEditor({
       setEditInterestRate("");
       router.refresh();
     } catch {
-      toast.error("เกิดข้อผิดพลาดในการบันทึก");
+      toast.error("บันทึกไม่สำเร็จ ลองอีกครั้ง");
     } finally {
       setSavingEdit(false);
     }
@@ -137,115 +145,135 @@ export function TemplateItemsEditor({
       toast.success("ลบรายการแล้ว");
       router.refresh();
     } catch {
-      toast.error("เกิดข้อผิดพลาด");
+      toast.error("ลบไม่สำเร็จ ลองอีกครั้ง");
     } finally {
       setDeleting(false);
       setDeleteId(null);
     }
   }
 
-  const grouped = CATEGORY_OPTIONS.map((cat) => ({
-    ...cat,
-    items:
+  const grouped = CATEGORY_OPTIONS.map((cat) => {
+    const groupItems =
       cat.value === "LOAN"
         ? items.filter((i) => i.accountOrSubType === "HOME_LOAN")
         : cat.value === "EXPENSE"
           ? items.filter((i) => i.category === "EXPENSE" && i.accountOrSubType !== "HOME_LOAN")
-          : items.filter((i) => i.category === cat.value),
-  }));
+          : items.filter((i) => i.category === cat.value);
+    return { ...cat, items: groupItems, total: groupItems.reduce((s, i) => s + i.defaultAmountCents, 0) };
+  });
 
   return (
-    <div className="space-y-5">
-      <div className="flex justify-end">
-        <Button onClick={() => setShowAdd(!showAdd)}>
-          <Plus className="w-4 h-4" />
-          เพิ่มรายการ
+    <div className="space-y-4 sm:space-y-5">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-slate-500">
+          <span className="font-semibold tabular-nums text-slate-900">{items.length}</span> รายการ · เลือกรายการเพื่อปรับยอด
+        </p>
+        <Button onClick={() => setShowAdd(!showAdd)} variant={showAdd ? "outline" : "default"} aria-expanded={showAdd}>
+          {showAdd ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+          {showAdd ? "ปิด" : "เพิ่มรายการ"}
         </Button>
       </div>
 
       {showAdd && (
-        <Card className="p-4">
-          <form onSubmit={handleAdd} className="space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <Select value={category} onChange={(e) => setCategory(e.target.value as EditorCategory)}>
-                {CATEGORY_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </Select>
-              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="ชื่อรายการ" />
-              <Input value={slug} onChange={(e) => setSlug(e.target.value.toLowerCase())} placeholder="slug เช่น goal-travel" />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <MoneyInput value={amount} onChange={setAmount} placeholder="จำนวนเงิน" />
-              {category === "LOAN" && (
+        <Card className="p-4 sm:p-5">
+          <form onSubmit={handleAdd} className="space-y-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <Field label="หมวด">
+                <Select value={category} onChange={(e) => setCategory(e.target.value as EditorCategory)}>
+                  {CATEGORY_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </Select>
+              </Field>
+              <Field label="ชื่อรายการ">
+                <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="เช่น ค่าไฟฟ้า" autoFocus />
+              </Field>
+              <Field label="จำนวนเงิน">
+                <MoneyInput value={amount} onChange={setAmount} />
+              </Field>
+              <Field label="Slug (ไม่บังคับ)">
                 <Input
-                  type="number"
-                  step="0.01"
-                  value={interestRate}
-                  onChange={(e) => setInterestRate(e.target.value)}
-                  placeholder="ดอกเบี้ย % เช่น 3.50"
+                  value={slug}
+                  onChange={(e) => setSlug(e.target.value.toLowerCase())}
+                  placeholder="เช่น goal-travel"
+                  autoCapitalize="none"
+                  autoCorrect="off"
                 />
+              </Field>
+              {category === "LOAN" && (
+                <Field label="ดอกเบี้ย (%)">
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    value={interestRate}
+                    onChange={(e) => setInterestRate(e.target.value)}
+                    placeholder="เช่น 3.50"
+                  />
+                </Field>
               )}
             </div>
-            <Button type="submit" disabled={isPending}>
+            <Button type="submit" disabled={isPending || !name.trim()} className="w-full sm:w-auto">
               {isPending ? "กำลังเพิ่ม..." : "เพิ่ม"}
             </Button>
           </form>
         </Card>
       )}
 
-      {grouped.map((group) => (
-        <Card key={group.value}>
-          <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2">
-            <Badge variant={BADGE_VARIANT[group.value]}>{group.label}</Badge>
-            <span className="text-xs text-slate-400">({group.items.length} รายการ)</span>
-          </div>
-          {group.items.length > 0 ? (
-            <div className="divide-y divide-slate-50">
-              {group.items.map((item) => (
-                <div key={item.id} className="flex items-center justify-between px-6 py-3">
-                  <span className={cn("text-sm font-medium text-slate-900", !item.isActive && "line-through text-slate-400")}>
-                    {item.name}
-                  </span>
-                  {item.interestRate && (
-                    <span className="ml-2 text-xs text-slate-500">ดอกเบี้ย {item.interestRate}%</span>
-                  )}
-                  <div className="flex items-center gap-4">
-                    <span className="text-sm font-medium tabular-nums text-slate-600">
-                      {formatTHB(item.defaultAmountCents)}
-                    </span>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <span className="sr-only">Open menu</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => {
-                            setEditItem(item);
-                            setEditSlug(item.slug || "");
-                            setEditAmount((item.defaultAmountCents / 100).toFixed(2));
-                            setEditInterestRate(item.interestRate || "");
-                          }}
-                        >
-                          ปรับยอดเริ่มต้น
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="text-red-600" onClick={() => setDeleteId(item.id)}>
-                          <Trash2 className="mr-2 h-4 w-4" /> ลบ
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </div>
-              ))}
+      <div className="grid grid-cols-1 gap-3 sm:gap-4 xl:grid-cols-2">
+        {grouped.map((group) => (
+          <Card key={group.value} className="overflow-hidden">
+            <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-3 sm:px-5">
+              <div className="flex items-center gap-2">
+                <Badge variant={BADGE_VARIANT[group.value]}>{group.label}</Badge>
+                <span className="text-xs tabular-nums text-slate-400">{group.items.length} รายการ</span>
+              </div>
+              {group.items.length > 0 && (
+                <span className="text-sm font-semibold tabular-nums text-slate-700">{formatTHB(group.total)}</span>
+              )}
             </div>
-          ) : (
-            <p className="px-6 py-4 text-sm text-slate-400">ไม่มีรายการ</p>
-          )}
-        </Card>
-      ))}
+            {group.items.length > 0 ? (
+              <ul className="divide-y divide-slate-100">
+                {group.items.map((item) => (
+                  <li key={item.id} className="flex items-center gap-1 pr-2 sm:pr-3">
+                    <button
+                      type="button"
+                      onClick={() => openEdit(item)}
+                      className="flex min-w-0 flex-1 items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50/60 active:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500 sm:px-5"
+                    >
+                      <span className="min-w-0">
+                        <span
+                          className={cn(
+                            "block truncate text-sm font-medium text-slate-900",
+                            !item.isActive && "text-slate-400 line-through"
+                          )}
+                        >
+                          {item.name}
+                        </span>
+                        {item.interestRate && (
+                          <span className="block text-xs text-slate-500">ดอกเบี้ย {item.interestRate}%</span>
+                        )}
+                      </span>
+                      <span className="shrink-0 text-sm font-medium tabular-nums text-slate-700">
+                        {formatTHB(item.defaultAmountCents)}
+                      </span>
+                    </button>
+                    <RowActions
+                      label={`ตัวเลือกของ ${item.name}`}
+                      actions={[
+                        { label: "ปรับยอดเริ่มต้น", icon: Pencil, onSelect: () => openEdit(item) },
+                        { label: "ลบรายการ", icon: Trash2, onSelect: () => setDeleteId(item.id), destructive: true },
+                      ]}
+                    />
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="px-4 py-4 text-sm text-slate-400 sm:px-5">ไม่มีรายการ</p>
+            )}
+          </Card>
+        ))}
+      </div>
+
       <ConfirmDialog
         open={deleteId !== null}
         onClose={() => setDeleteId(null)}
@@ -266,11 +294,29 @@ export function TemplateItemsEditor({
           }
         }}
       >
-        <DialogContent className="max-w-md">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>ปรับยอดเริ่มต้น: {editItem?.name}</DialogTitle>
+            <DialogTitle>{editItem?.name}</DialogTitle>
+            <DialogDescription>ปรับยอดเริ่มต้นที่จะใช้ทุกเดือน</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSaveEdit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="editAmount">ยอดเริ่มต้น (บาท)</Label>
+              <MoneyInput id="editAmount" value={editAmount} onChange={setEditAmount} />
+            </div>
+            {editItem?.accountOrSubType === "HOME_LOAN" && (
+              <div className="space-y-2">
+                <Label htmlFor="editInterestRate">ดอกเบี้ย (%)</Label>
+                <Input
+                  id="editInterestRate"
+                  type="text"
+                  inputMode="decimal"
+                  value={editInterestRate}
+                  onChange={(e) => setEditInterestRate(e.target.value)}
+                  placeholder="เช่น 3.50"
+                />
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="editSlug">Slug</Label>
               <Input
@@ -278,32 +324,10 @@ export function TemplateItemsEditor({
                 value={editSlug}
                 onChange={(e) => setEditSlug(e.target.value.toLowerCase())}
                 placeholder="เช่น goal-travel"
+                autoCapitalize="none"
+                autoCorrect="off"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="editAmount">ยอดเริ่มต้น (บาท)</Label>
-              <Input
-                id="editAmount"
-                type="number"
-                step="0.01"
-                value={editAmount}
-                onChange={(e) => setEditAmount(e.target.value)}
-                placeholder="0.00"
-              />
-            </div>
-            {editItem?.accountOrSubType === "HOME_LOAN" && (
-              <div className="space-y-2">
-                <Label htmlFor="editInterestRate">ดอกเบี้ย (%)</Label>
-                <Input
-                  id="editInterestRate"
-                  type="number"
-                  step="0.01"
-                  value={editInterestRate}
-                  onChange={(e) => setEditInterestRate(e.target.value)}
-                  placeholder="เช่น 3.50"
-                />
-              </div>
-            )}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setEditItem(null)}>
                 ยกเลิก
